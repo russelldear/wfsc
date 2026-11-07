@@ -10,6 +10,19 @@ ref="${1:?project ref required}"
 : "${SUPABASE_ACCESS_TOKEN:?SUPABASE_ACCESS_TOKEN must be set}"
 : "${SUPABASE_DB_PASSWORD:?SUPABASE_DB_PASSWORD must be set}"
 
+# If the pooler host is given (SUPABASE_DB_POOLER_HOST, from the Session
+# pooler section of the project's Connect dialog), use it directly.
+# Otherwise look it up, which needs the token to have the
+# database_pooling_config_read permission.
+if [ -n "${SUPABASE_DB_POOLER_HOST:-}" ]; then
+  node -e '
+    const user = encodeURIComponent("postgres." + process.argv[1]);
+    const password = encodeURIComponent(process.env.SUPABASE_DB_PASSWORD);
+    console.log(`postgresql://${user}:${password}@${process.argv[2]}:5432/postgres`);
+  ' "$ref" "$SUPABASE_DB_POOLER_HOST"
+  exit 0
+fi
+
 response=$(curl --silent --show-error --fail-with-body \
   -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
   "https://api.supabase.com/v1/projects/${ref}/config/database/pooler") || {

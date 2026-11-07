@@ -49,6 +49,7 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_DB_POOLER_HOST: ${{ vars.STAGING_DB_POOLER_HOST }}
       - name: Apply migrations and made-up seed data to staging
         run: npx supabase db push --remote="$SUPABASE_DB_URL" --include-seed --yes
 
@@ -74,6 +75,7 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_DB_POOLER_HOST: ${{ vars.PRODUCTION_DB_POOLER_HOST }}
       - name: Apply migrations to production (no seed data)
         run: npx supabase db push --remote="$SUPABASE_DB_URL" --yes
       - name: Mark this commit as released
