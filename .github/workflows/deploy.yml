@@ -41,16 +41,16 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - name: Apply migrations and made-up seed data to staging
-        run: >-
-          npx supabase db push
-          --remote="${{ vars.STAGING_PROJECT_REF }}"
-          --password="$SUPABASE_DB_PASSWORD"
-          --include-seed
-          --yes
+      - name: Find the staging database (IPv4 pooler)
+        run: |
+          url=$(scripts/supabase-db-url.sh "${{ vars.STAGING_PROJECT_REF }}")
+          echo "::add-mask::$url"
+          echo "SUPABASE_DB_URL=$url" >> "$GITHUB_ENV"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      - name: Apply migrations and made-up seed data to staging
+        run: npx supabase db push --remote="$SUPABASE_DB_URL" --include-seed --yes
 
   production-database:
     if: github.event_name == 'workflow_dispatch' && inputs.promote
@@ -66,15 +66,16 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - name: Apply migrations to production (no seed data)
-        run: >-
-          npx supabase db push
-          --remote="${{ vars.PRODUCTION_PROJECT_REF }}"
-          --password="$SUPABASE_DB_PASSWORD"
-          --yes
+      - name: Find the production database (IPv4 pooler)
+        run: |
+          url=$(scripts/supabase-db-url.sh "${{ vars.PRODUCTION_PROJECT_REF }}")
+          echo "::add-mask::$url"
+          echo "SUPABASE_DB_URL=$url" >> "$GITHUB_ENV"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      - name: Apply migrations to production (no seed data)
+        run: npx supabase db push --remote="$SUPABASE_DB_URL" --yes
       - name: Mark this commit as released
         run: git push --force origin "${{ github.sha }}:refs/heads/production"
 
