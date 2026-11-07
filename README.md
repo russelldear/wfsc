@@ -135,14 +135,38 @@ insert into public.user_role (user_id, role)
 select id, 'committee' from auth.users where email = 'your.address@example.com';
 ```
 
-### After importing existing members
+## Importing existing members
 
-So new membership numbers continue after the highest imported one:
+**Import** (top menu) reads a CSV downloaded from the club's Google Sheet
+(File → Download → Comma-separated values). The file is read in the browser
+and sent straight to Supabase. The page shows how every row will be read,
+flags problems, and offers to create any member types the file uses that don't
+exist yet. The import is all or nothing.
 
-```sql
-select setval('public.membership_number_seq',
-              (select max(membership_number) from public.person));
-```
+How the Sheet's columns are read:
+
+- Dates must be dd/mm/yyyy. Anything else is left blank, with a warning.
+- **Expiry** sets the membership season: the season ending on the first
+  30 September on or after it. A blank Expiry imports the person without a
+  membership.
+- **Type** Family gives each person their own family membership, because the
+  Sheet doesn't record who is in which family. Link them afterwards: on one
+  family member's page, use **Add family member**. The other person's own
+  membership for that season is replaced by the shared one.
+- **Parent/Guardian** and **Emergency Contact** text is copied into a
+  contact's name, to tidy up later.
+- **card done?** = Y is recorded as a card issued on the import date.
+- **Age** isn't imported. Add dates of birth later.
+- Rows whose membership number is already in the database are skipped, so
+  re-importing the same file doesn't create duplicates.
+
+New membership numbers continue after the highest one imported.
+
+## Backups
+
+Nightly backups, the keep-alive for Supabase's free plan, and restore
+instructions live in the private
+[wfsc-ops](https://github.com/russelldear/wfsc-ops) repository.
 
 ## Privacy notes
 

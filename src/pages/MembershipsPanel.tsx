@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import {
-  addToMembership,
   createMembership,
   deleteMembership,
   friendlyError,
+  joinFamilyMembership,
   listMembers,
   removeFromMembership,
   renewMembership,
@@ -363,7 +363,7 @@ function MembershipCard(props: {
             lookups={lookups}
             excludeIds={members.map((mm) => mm.person_id)}
             disabled={busy}
-            onAdd={(personId, typeId) => run(() => addToMembership(m.id, personId, typeId))}
+            onAdd={(personId, typeId) => run(() => joinFamilyMembership(m.id, personId, typeId))}
           />
         )}
         <button
@@ -450,7 +450,9 @@ function AddFamilyMember(props: {
         Cancel
       </button>
       <span className="hint">
-        Not listed? <Link to="/people/new">Add them as a person</Link> first.
+        If they already have their own membership this season (for example, after an import),
+        it is replaced by this one. Not listed? <Link to="/people/new">Add them as a person</Link>{' '}
+        first.
       </span>
     </span>
   );

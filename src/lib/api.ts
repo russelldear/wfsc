@@ -1,4 +1,5 @@
 import type { PostgrestError } from '@supabase/supabase-js';
+import type { ImportPayload } from './importMembers';
 import { supabase } from './supabase';
 import type {
   Contact,
@@ -147,20 +148,6 @@ export async function deleteMembership(id: string) {
   check(await supabase.from('membership').delete().eq('id', id));
 }
 
-export async function addToMembership(
-  membershipId: string,
-  personId: string,
-  memberTypeId: number | null,
-) {
-  check(
-    await supabase.from('membership_member').insert({
-      membership_id: membershipId,
-      person_id: personId,
-      member_type_id: memberTypeId,
-    }),
-  );
-}
-
 export async function updateMembershipMember(
   membershipId: string,
   personId: string,
@@ -191,4 +178,31 @@ export async function addMemberType(name: string) {
 
 export async function updateMemberType(id: number, changes: { name?: string; active?: boolean }) {
   check(await supabase.from('member_type').update(changes).eq('id', id));
+}
+
+/** Moves a person onto a family membership, replacing a solo one that season. */
+export async function joinFamilyMembership(
+  membershipId: string,
+  personId: string,
+  memberTypeId: number | null,
+) {
+  check(
+    await supabase.rpc('join_family_membership', {
+      p_membership_id: membershipId,
+      p_person_id: personId,
+      p_member_type_id: memberTypeId,
+    }),
+  );
+}
+
+/** Imports people all at once; nothing is saved if any row fails. */
+export async function importMembers(rows: ImportPayload[]): Promise<number> {
+  return check(await supabase.rpc('import_members', { p_rows: rows })) as number;
+}
+
+export async function existingMembershipNumbers(): Promise<Set<number>> {
+  const rows = check(
+    await supabase.from('person').select('membership_number').not('membership_number', 'is', null),
+  ) as { membership_number: number }[];
+  return new Set(rows.map((r) => r.membership_number));
 }

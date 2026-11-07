@@ -15,6 +15,7 @@ export function Layout() {
             <NavLink to="/" end>Members</NavLink>
             <NavLink to="/people/new">Add member</NavLink>
             <NavLink to="/settings/member-types">Member types</NavLink>
+            <NavLink to="/import">Import</NavLink>
           </nav>
           <span className="user">
             <span className="user-email">{session?.user.email}</span>
