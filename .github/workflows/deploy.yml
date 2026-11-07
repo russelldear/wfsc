@@ -1,0 +1,139 @@
+name: Deploy
+
+# Every push to main: tests, then staging database migrations, then the site.
+# Production: run this workflow by hand with "promote" ticked. The production
+# job waits for approval (set required reviewers on the "production"
+# environment), migrates the production database, and marks the commit as
+# released by moving the `production` branch to it.
+#
+# The site at guid.nz/wfsc/ is built from the `production` branch and
+# guid.nz/wfsc/staging/ from main.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      promote:
+        description: Release this commit to production
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  staging-database:
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Apply migrations and made-up seed data to staging
+        run: >-
+          npx supabase db push
+          --remote="${{ vars.STAGING_PROJECT_REF }}"
+          --password="$SUPABASE_DB_PASSWORD"
+          --include-seed
+          --yes
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+  production-database:
+    if: github.event_name == 'workflow_dispatch' && inputs.promote
+    needs: staging-database
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Apply migrations to production (no seed data)
+        run: >-
+          npx supabase db push
+          --remote="${{ vars.PRODUCTION_PROJECT_REF }}"
+          --password="$SUPABASE_DB_PASSWORD"
+          --yes
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      - name: Mark this commit as released
+        run: git push --force origin "${{ github.sha }}:refs/heads/production"
+
+  build-site:
+    needs: [staging-database, production-database]
+    # Run after staging succeeds, whether or not production was promoted.
+    if: >-
+      always() &&
+      needs.staging-database.result == 'success' &&
+      needs.production-database.result != 'failure' &&
+      needs.production-database.result != 'cancelled'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Build production site from the production branch
+        run: |
+          if git rev-parse --verify --quiet origin/production >/dev/null; then
+            git worktree add ../production origin/production
+            (cd ../production && npm ci && npx vite build --outDir "$GITHUB_WORKSPACE/site" --emptyOutDir)
+          else
+            mkdir -p site
+            printf '%s\n' '<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex">' \
+              '<title>WFSC Members</title><p>Not released yet.</p>' > site/index.html
+          fi
+        env:
+          VITE_SUPABASE_URL: https://${{ vars.PRODUCTION_PROJECT_REF }}.supabase.co
+          VITE_SUPABASE_ANON_KEY: ${{ vars.PRODUCTION_SUPABASE_ANON_KEY }}
+
+      - name: Build staging site from this commit
+        run: |
+          npm ci
+          npx vite build --outDir site/staging --emptyOutDir
+        env:
+          VITE_SUPABASE_URL: https://${{ vars.STAGING_PROJECT_REF }}.supabase.co
+          VITE_SUPABASE_ANON_KEY: ${{ vars.STAGING_SUPABASE_ANON_KEY }}
+          VITE_ENV_LABEL: Staging
+
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy-site:
+    needs: build-site
+    if: always() && needs.build-site.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

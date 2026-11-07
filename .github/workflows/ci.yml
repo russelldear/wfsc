@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    name: Lint, type-check, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npx vite build
+        env:
+          VITE_SUPABASE_URL: https://ci.invalid
+          VITE_SUPABASE_ANON_KEY: ci-placeholder
+
+  database:
+    name: Database security tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # Postgres plus the auth service; everything else is not needed for tests.
+      # Applies all migrations and the seed.
+      - run: >-
+          npx supabase start
+          -x realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+      - run: npx supabase test db
