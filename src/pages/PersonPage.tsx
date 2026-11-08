@@ -1,8 +1,9 @@
 import { Link, useParams } from 'react-router';
 import { useAsync } from '../components/useAsync';
-import { fetchLookups, getPerson } from '../lib/api';
+import { fetchBadgeCatalog, fetchLookups, getPerson } from '../lib/api';
 import { ageOn, formatDate, nzToday } from '../lib/dates';
 import { MembershipsPanel } from './MembershipsPanel';
+import { SkateSchoolPanel } from './SkateSchoolPanel';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -17,6 +18,7 @@ export function PersonPage() {
   const { id = '' } = useParams();
   const person = useAsync(() => getPerson(id), [id]);
   const lookups = useAsync(fetchLookups, []);
+  const catalog = useAsync(fetchBadgeCatalog, []);
 
   if (person.error) return <p className="error">{person.error}</p>;
   if (lookups.error) return <p className="error">{lookups.error}</p>;
@@ -97,6 +99,9 @@ export function PersonPage() {
       </div>
 
       <MembershipsPanel person={p} lookups={l} onChange={person.reload} />
+
+      {catalog.error && <p className="error">{catalog.error}</p>}
+      {catalog.data && <SkateSchoolPanel person={p} catalog={catalog.data} />}
     </>
   );
 }

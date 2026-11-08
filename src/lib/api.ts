@@ -2,12 +2,20 @@ import type { PostgrestError } from '@supabase/supabase-js';
 import type { ImportPayload } from './importMembers';
 import { supabase } from './supabase';
 import type {
+  Badge,
+  BadgeCatalog,
+  BadgePass,
+  BadgeSkill,
+  BadgeSkillKind,
+  BadgeStream,
   Contact,
   Lookups,
   MemberSummary,
   MembershipKind,
   PersonDetail,
   PersonFields,
+  SkaterProgress,
+  SkillAchievement,
 } from './types';
 
 /** Turns database errors into messages a committee member can act on. */
@@ -21,6 +29,9 @@ export function friendlyError(error: unknown): string {
       return 'That membership number is already in use.';
     }
     return 'That would create a duplicate.';
+  }
+  if (e?.code === '23503') {
+    return 'That is still in use, so it cannot be removed.';
   }
   if (e?.code === '42501') {
     return 'You do not have permission to do that.';
@@ -205,4 +216,85 @@ export async function existingMembershipNumbers(): Promise<Set<string>> {
     await supabase.from('person').select('membership_number').not('membership_number', 'is', null),
   ) as { membership_number: string }[];
   return new Set(rows.map((r) => r.membership_number));
+}
+
+// ---------------------------------------------------------------------------
+// Kiwiskate
+// ---------------------------------------------------------------------------
+
+export async function fetchBadgeCatalog(): Promise<BadgeCatalog> {
+  const [streams, badges, skills] = await Promise.all([
+    supabase.from('badge_stream').select('*').order('sort_order'),
+    supabase.from('badge').select('*').order('sort_order'),
+    supabase.from('badge_skill').select('*').order('sort_order'),
+  ]);
+  return {
+    streams: check(streams) as BadgeStream[],
+    badges: check(badges) as Badge[],
+    skills: check(skills) as BadgeSkill[],
+  };
+}
+
+export async function getSkaterProgress(personId: string): Promise<SkaterProgress> {
+  const [achievements, passes] = await Promise.all([
+    supabase.from('skill_achievement').select('person_id, skill_id, achieved_on, note').eq('person_id', personId),
+    supabase.from('badge_pass').select('*').eq('person_id', personId),
+  ]);
+  return {
+    achievements: check(achievements) as SkillAchievement[],
+    passes: check(passes) as BadgePass[],
+  };
+}
+
+export async function tickSkill(personId: string, skillId: number, achievedOn: string) {
+  check(
+    await supabase
+      .from('skill_achievement')
+      .insert({ person_id: personId, skill_id: skillId, achieved_on: achievedOn }),
+  );
+}
+
+export async function untickSkill(personId: string, skillId: number) {
+  check(await supabase.from('skill_achievement').delete().eq('person_id', personId).eq('skill_id', skillId));
+}
+
+export async function updateSkillAchievement(
+  personId: string,
+  skillId: number,
+  changes: { achieved_on?: string; note?: string | null },
+) {
+  check(
+    await supabase.from('skill_achievement').update(changes).eq('person_id', personId).eq('skill_id', skillId),
+  );
+}
+
+export async function recordBadgePass(input: Omit<BadgePass, 'id'>) {
+  check(await supabase.from('badge_pass').insert(input));
+}
+
+export async function deleteBadgePass(id: string) {
+  check(await supabase.from('badge_pass').delete().eq('id', id));
+}
+
+export async function updateBadgeSkill(id: number, changes: { description: string }) {
+  check(await supabase.from('badge_skill').update(changes).eq('id', id));
+}
+
+export async function addBadgeSkill(badgeId: number, kind: BadgeSkillKind, description: string, sortOrder: number) {
+  check(
+    await supabase
+      .from('badge_skill')
+      .insert({ badge_id: badgeId, kind, description, sort_order: sortOrder }),
+  );
+}
+
+export async function deleteBadgeSkill(id: number) {
+  check(await supabase.from('badge_skill').delete().eq('id', id));
+}
+
+export async function updateBadge(
+  id: number,
+  changes: { description?: string | null; prerequisite_id?: number | null; max_age?: number | null },
+) {
+  check(await supabase.from('badge').update(changes).eq('id', id));
 }

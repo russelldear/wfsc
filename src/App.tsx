@@ -1,6 +1,7 @@
 import { HashRouter, Route, Routes } from 'react-router';
 import { AuthProvider, useAuth } from './auth/AuthProvider';
 import { CenteredCard, Layout } from './components/Layout';
+import { BadgesPage } from './pages/BadgesPage';
 import { ImportPage } from './pages/ImportPage';
 import { MemberListPage } from './pages/MemberListPage';
 import { MemberTypesPage } from './pages/MemberTypesPage';
@@ -53,6 +54,7 @@ function Gate() {
           <Route path="people/:id/edit" element={<PersonFormPage />} />
           <Route path="settings/member-types" element={<MemberTypesPage />} />
           <Route path="import" element={<ImportPage />} />
+          <Route path="badges" element={<BadgesPage />} />
           <Route path="*" element={<p>Page not found.</p>} />
         </Route>
       </Routes>

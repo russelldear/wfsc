@@ -478,3 +478,118 @@ table.members td {
   gap: 1rem;
   align-items: center;
 }
+
+/* Kiwiskate */
+
+h3 {
+  font-size: 1rem;
+  margin: 1rem 0 0.5rem;
+}
+
+h4 {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0.5rem 0 0.25rem;
+}
+
+.skate-school {
+  margin-top: 1rem;
+}
+
+.inline-label {
+  flex-direction: row;
+  align-items: center;
+}
+
+.passes {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.badge-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.badge-card.ready {
+  border-color: var(--ok-text);
+}
+
+.badge-card header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.5rem;
+}
+
+ol.skills {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+ol.skills label.checkbox {
+  align-items: flex-start;
+}
+
+ol.skills label.checkbox input {
+  margin-top: 0.25rem;
+}
+
+.tick-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.25rem 0 0 1.6rem;
+}
+
+.tick-meta input {
+  font-size: 0.85rem;
+  padding: 0.2rem 0.4rem;
+}
+
+ol.teaching {
+  color: var(--muted);
+  padding-left: 1.5rem;
+}
+
+details summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.badge-actions {
+  margin-top: 0.5rem;
+}
+
+.toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin: 0 0 1rem;
+}
+
+.stream {
+  margin-bottom: 1rem;
+}
+
+.badge-block {
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.badge-block h3 {
+  margin-top: 0.25rem;
+}
+
+.inline-form .grow,
+.subform .grow {
+  flex: 1 1 14rem;
+}

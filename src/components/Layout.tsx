@@ -14,6 +14,7 @@ export function Layout() {
           <nav aria-label="Main">
             <NavLink to="/" end>Members</NavLink>
             <NavLink to="/people/new">Add member</NavLink>
+            <NavLink to="/badges">Badges</NavLink>
             <NavLink to="/settings/member-types">Member types</NavLink>
             <NavLink to="/import">Import</NavLink>
           </nav>

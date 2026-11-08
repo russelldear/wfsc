@@ -37,6 +37,9 @@ Supabase (Postgres + Auth)
 | `membership` | One paid membership for one season (1 Oct to 30 Sep), individual or family. |
 | `membership_member` | Who a membership covers, with their member type and card-issued date. A person has at most one membership per season. |
 | `member_type` | Club-managed list of member types. |
+| `badge_stream`, `badge`, `badge_skill` | Kiwiskate badges and their skills (see below). |
+| `skill_achievement` | Assessment skills a skater has achieved, with date and optional note. |
+| `badge_pass` | Badges a skater has passed, with date and assessor. |
 | `user_role` | Who can use the app. |
 | `audit_log` | Change history. |
 
@@ -164,6 +167,30 @@ Membership numbers use the club format: two-digit year of joining, a slash,
 and a counter that runs on across years (e.g. `22/006`). When someone without
 a number first joins a membership, they get the current year and the next
 counter after the highest in use, e.g. `26/107`.
+
+## Kiwiskate badges
+
+The badges and skills come from section 700 of the 2019 NZIFSA Rules and
+Regulations (the current edition), loaded by a migration. The committee can
+edit them on the **Badges** page.
+
+- Each badge has a **"must already have"** badge. A pass can only be recorded
+  once that badge is passed, on or before the same day; the database enforces
+  this. Within each stream badges go in order. Beginner does not require Tiny
+  Tots, because Tiny Tots are only for skaters aged 6 and under. There are no
+  requirements across streams.
+- Only "Skills for Assessment" are ticked off. "Teaching Progression Ideas"
+  are shown for reference (rule 701.2).
+- A badge is **ready to test** when every assessment skill is ticked and the
+  earlier badge is passed. Recording a pass doesn't require all skills to be
+  ticked; it warns instead.
+- Only passes are recorded, not failed attempts.
+- Skate school data lives in its own tables, not on `person`, so that a future
+  coach role can see progress without seeing members' personal details.
+
+Wording changes from the PDF: trailing full stops added where missing, an
+unmatched closing bracket removed from Advanced teaching idea 4, and the
+Synchronized Skating introductions turned into sentences.
 
 ## Backups
 

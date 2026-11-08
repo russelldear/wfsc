@@ -113,3 +113,64 @@ export interface MemberSummary {
   member_type: string | null;
   is_current: boolean;
 }
+
+// Kiwiskate (stage 3a)
+
+export interface BadgeStream {
+  id: number;
+  code: string;
+  name: string;
+  rule_section: string | null;
+  note: string | null;
+  sort_order: number;
+}
+
+export interface Badge {
+  id: number;
+  stream_id: number;
+  name: string;
+  sort_order: number;
+  prerequisite_id: number | null;
+  max_age: number | null;
+  description: string | null;
+}
+
+export type BadgeSkillKind = 'assessment' | 'teaching';
+
+export interface BadgeSkill {
+  id: number;
+  badge_id: number;
+  kind: BadgeSkillKind;
+  sort_order: number;
+  description: string;
+}
+
+export interface BadgeCatalog {
+  streams: BadgeStream[];
+  badges: Badge[];
+  skills: BadgeSkill[];
+}
+
+export interface SkillAchievement {
+  person_id: string;
+  skill_id: number;
+  achieved_on: string;
+  note: string | null;
+}
+
+export type AssessorType = 'judge' | 'coach';
+
+export interface BadgePass {
+  id: string;
+  person_id: string;
+  badge_id: number;
+  passed_on: string;
+  assessor_name: string;
+  assessor_type: AssessorType;
+  note: string | null;
+}
+
+export interface SkaterProgress {
+  achievements: SkillAchievement[];
+  passes: BadgePass[];
+}
