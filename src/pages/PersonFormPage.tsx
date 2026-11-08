@@ -145,7 +145,7 @@ function PersonForm({ lookups, existing }: { lookups: Lookups; existing: PersonD
               value={fields.membership_number ?? ''}
               pattern={MEMBERSHIP_NUMBER_PATTERN}
               title="Two-digit year, a slash, and at least three digits, e.g. 22/006"
-              placeholder="Assigned when they join, e.g. 26/107"
+              placeholder="e.g. 22/006 (blank = auto)"
               onChange={(e) => set('membership_number', e.target.value.trim() || null)}
             />
           </label>
@@ -182,15 +182,19 @@ function PersonForm({ lookups, existing }: { lookups: Lookups; existing: PersonD
             </label>
           ))}
         </fieldset>
+        <p className="hint">Gender and ethnicity are optional and are used for NZIFSA and Sport NZ reporting.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Skate school</legend>
         <label className="checkbox">
           <input
             type="checkbox"
             checked={fields.in_skate_school}
             onChange={(e) => set('in_skate_school', e.target.checked)}
           />
-          Also in the skate school
+          Enrolled in the skate school
         </label>
-        <p className="hint">Gender and ethnicity are optional and are used for NZIFSA and Sport NZ reporting.</p>
       </fieldset>
 
       <fieldset>
