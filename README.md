@@ -186,8 +186,8 @@ edit them on the **Badges** page.
   this. Within each stream badges go in order. Beginner does not require Tiny
   Tots, because Tiny Tots are only for skaters aged 6 and under. There are no
   requirements across streams.
-- Only "Skills for Assessment" are ticked off. "Teaching Progression Ideas"
-  are shown for reference (rule 701.2).
+- Only "Skills for Assessment" are ticked off (rule 701.2). "Teaching
+  Progression Ideas" are kept in the database but not shown in the app.
 - A badge is **ready to test** when every assessment skill is ticked and the
   earlier badge is passed. Recording a pass doesn't require all skills to be
   ticked; it warns instead.

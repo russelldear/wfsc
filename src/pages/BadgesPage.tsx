@@ -40,8 +40,7 @@ export function BadgesPage() {
       </div>
       <p className="hint">
         From section 700 of the 2019 NZIFSA Rules and Regulations. Tests may be judged by a NZIFSA Judge or a Level 1
-        Accredited Professional Coach (701.1). Only "Skills for Assessment" are tested; teaching progression ideas
-        are taught but not tested (701.2). Correct balance, posture and eye focus must be covered for every skill
+        Accredited Professional Coach (701.1). Only the "Skills for Assessment" are tested (701.2). Correct balance, posture and eye focus must be covered for every skill
         (701.3).
       </p>
       {error && <p className="error">{error}</p>}
@@ -70,7 +69,6 @@ function Catalog(props: { catalog: BadgeCatalog; editing: boolean; run: (a: () =
           <h2>
             {stream.name} <span className="muted">({stream.rule_section})</span>
           </h2>
-          {stream.note && <p className="hint">{stream.note}</p>}
           {catalog.badges
             .filter((b) => b.stream_id === stream.id)
             .sort((a, b) => a.sort_order - b.sort_order)
@@ -145,10 +143,7 @@ function BadgeBlock(props: {
           {badge.description && <p className="hint">{badge.description}</p>}
         </>
       )}
-      <div className="columns">
-        <SkillList title="Skills for assessment" kind="assessment" badge={badge} skills={skills} editing={editing} run={run} />
-        <SkillList title="Teaching progression ideas" kind="teaching" badge={badge} skills={skills} editing={editing} run={run} />
-      </div>
+      <SkillList title="Skills for assessment" kind="assessment" badge={badge} skills={skills} editing={editing} run={run} />
     </article>
   );
 }

@@ -12,8 +12,8 @@ import {
   moveEnrolment,
   unenrol,
   recordBadgePass,
-  tickSkill,
-  untickSkill,
+  tickSkills,
+  untickSkills,
   updateSkillAchievement,
 } from '../lib/api';
 import { badgeStatuses, badgesInFocus, orderedBadges, overAgeLimit, type BadgeStatus } from '../lib/badges';
@@ -36,17 +36,18 @@ export function SkateSchoolPanel({ person, catalog, onPersonChange }: Props) {
   // entered quickly. A failed save is undone and reported.
   const [optimistic, setOptimistic] = useState<Record<number, boolean>>({});
 
-  async function toggleSkill(skillId: number, checked: boolean) {
-    setOptimistic((o) => ({ ...o, [skillId]: checked }));
+  async function toggleSkills(skillIds: number[], checked: boolean) {
+    if (skillIds.length === 0) return;
+    setOptimistic((o) => ({ ...o, ...Object.fromEntries(skillIds.map((id) => [id, checked])) }));
     setError(null);
     try {
-      if (checked) await tickSkill(person.id, skillId, tickDate);
-      else await untickSkill(person.id, skillId);
+      if (checked) await tickSkills(person.id, skillIds, tickDate);
+      else await untickSkills(person.id, skillIds);
       progress.reload();
     } catch (e) {
       setOptimistic((o) => {
         const next = { ...o };
-        delete next[skillId];
+        for (const id of skillIds) delete next[id];
         return next;
       });
       setError(friendlyError(e));
@@ -138,7 +139,7 @@ export function SkateSchoolPanel({ person, catalog, onPersonChange }: Props) {
           streamName={streamName.get(b.stream_id) ?? ''}
           achievements={achievements}
           optimistic={optimistic}
-          onToggle={(skillId, checked) => void toggleSkill(skillId, checked)}
+          onToggle={(skillIds, checked) => void toggleSkills(skillIds, checked)}
           person={person}
           busy={busy}
           run={run}
@@ -153,7 +154,7 @@ function BadgeCard(props: {
   streamName: string;
   achievements: Map<number, SkillAchievement>;
   optimistic: Record<number, boolean>;
-  onToggle: (skillId: number, checked: boolean) => void;
+  onToggle: (skillIds: number[], checked: boolean) => void;
   person: PersonDetail;
   busy: boolean;
   run: (action: () => Promise<unknown>) => Promise<void>;
@@ -177,59 +178,52 @@ function BadgeCard(props: {
       </header>
       {s.badge.description && <p className="hint">{s.badge.description}</p>}
 
-      <ol className="skills">
+      <TickAll status={s} isTicked={isTicked} onToggle={props.onToggle} />
+      <ol className="skills skill-rows">
         {s.assessment.map((skill) => {
           const a = achievements.get(skill.id);
           return (
-            <li key={skill.id}>
+            <li key={skill.id} className="skill-row">
               <label className="checkbox">
                 <input
                   type="checkbox"
                   checked={isTicked(skill.id)}
-                  onChange={(e) => props.onToggle(skill.id, e.target.checked)}
+                  onChange={(e) => props.onToggle([skill.id], e.target.checked)}
                 />
                 {skill.description}
               </label>
-              {a && (
-                <span className="tick-meta">
-                  <input
-                    type="date"
-                    aria-label={`Date achieved: ${skill.description}`}
-                    defaultValue={a.achieved_on}
-                    disabled={busy}
-                    onBlur={(e) => {
-                      if (e.target.value && e.target.value !== a.achieved_on) {
-                        void run(() => updateSkillAchievement(person.id, skill.id, { achieved_on: e.target.value }));
-                      }
-                    }}
-                  />
-                  <input
-                    aria-label={`Note: ${skill.description}`}
-                    placeholder="Note (optional)"
-                    defaultValue={a.note ?? ''}
-                    disabled={busy}
-                    onBlur={(e) => {
-                      const note = e.target.value.trim() || null;
-                      if (note !== a.note) void run(() => updateSkillAchievement(person.id, skill.id, { note }));
-                    }}
-                  />
-                </span>
-              )}
+              {/* Beside the skill, so ticking never moves the next checkbox. */}
+              <span className="tick-meta">
+                {a && (
+                  <>
+                    <input
+                      type="date"
+                      aria-label={`Date achieved: ${skill.description}`}
+                      defaultValue={a.achieved_on}
+                      disabled={busy}
+                      onBlur={(e) => {
+                        if (e.target.value && e.target.value !== a.achieved_on) {
+                          void run(() => updateSkillAchievement(person.id, skill.id, { achieved_on: e.target.value }));
+                        }
+                      }}
+                    />
+                    <input
+                      aria-label={`Note: ${skill.description}`}
+                      placeholder="Note (optional)"
+                      defaultValue={a.note ?? ''}
+                      disabled={busy}
+                      onBlur={(e) => {
+                        const note = e.target.value.trim() || null;
+                        if (note !== a.note) void run(() => updateSkillAchievement(person.id, skill.id, { note }));
+                      }}
+                    />
+                  </>
+                )}
+              </span>
             </li>
           );
         })}
       </ol>
-
-      {s.teaching.length > 0 && (
-        <details>
-          <summary>Teaching progression ideas (taught, not tested)</summary>
-          <ol className="teaching">
-            {s.teaching.map((t) => (
-              <li key={t.id}>{t.description}</li>
-            ))}
-          </ol>
-        </details>
-      )}
 
       {recording ? (
         <RecordPassForm
@@ -402,5 +396,37 @@ function ClassThisTerm({ person, onChange }: { person: PersonDetail; onChange: (
         </p>
       )}
     </>
+  );
+}
+
+function TickAll(props: {
+  status: BadgeStatus;
+  isTicked: (skillId: number) => boolean;
+  onToggle: (skillIds: number[], checked: boolean) => void;
+}) {
+  const ids = props.status.assessment.map((sk) => sk.id);
+  const tickedIds = ids.filter(props.isTicked);
+  const all = ids.length > 0 && tickedIds.length === ids.length;
+  const some = tickedIds.length > 0 && !all;
+  return (
+    <label className="checkbox tick-all">
+      <input
+        type="checkbox"
+        checked={all}
+        ref={(el) => {
+          if (el) el.indeterminate = some;
+        }}
+        onChange={() => {
+          if (all) {
+            if (confirm(`Untick all ${ids.length} skills for ${props.status.badge.name}? Their dates and notes are removed.`)) {
+              props.onToggle(ids, false);
+            }
+          } else {
+            props.onToggle(ids.filter((id) => !props.isTicked(id)), true);
+          }
+        }}
+      />
+      Tick all
+    </label>
   );
 }

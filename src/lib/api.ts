@@ -268,15 +268,24 @@ export async function getSkaterProgress(personId: string): Promise<SkaterProgres
 }
 
 export async function tickSkill(personId: string, skillId: number, achievedOn: string) {
-  check(
-    await supabase
-      .from('skill_achievement')
-      .insert({ person_id: personId, skill_id: skillId, achieved_on: achievedOn }),
-  );
+  await tickSkills(personId, [skillId], achievedOn);
 }
 
 export async function untickSkill(personId: string, skillId: number) {
-  check(await supabase.from('skill_achievement').delete().eq('person_id', personId).eq('skill_id', skillId));
+  await untickSkills(personId, [skillId]);
+}
+
+/** Ticks several skills in one request (all or nothing). */
+export async function tickSkills(personId: string, skillIds: number[], achievedOn: string) {
+  check(
+    await supabase
+      .from('skill_achievement')
+      .insert(skillIds.map((skill_id) => ({ person_id: personId, skill_id, achieved_on: achievedOn }))),
+  );
+}
+
+export async function untickSkills(personId: string, skillIds: number[]) {
+  check(await supabase.from('skill_achievement').delete().eq('person_id', personId).in('skill_id', skillIds));
 }
 
 export async function updateSkillAchievement(

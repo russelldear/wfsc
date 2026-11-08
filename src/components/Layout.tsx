@@ -1,44 +1,101 @@
-import { NavLink, Outlet } from 'react-router';
+import { useState } from 'react';
+import { Outlet, useLocation } from 'react-router';
 import { useAuth } from '../auth/AuthProvider';
+import { getThemeChoice, setThemeChoice, type ThemeChoice } from '../lib/theme';
+import { Menu, MenuLink } from './Menu';
 
 const envLabel = import.meta.env.VITE_ENV_LABEL as string | undefined;
 
+const THEMES: { value: ThemeChoice; label: string }[] = [
+  { value: 'system', label: 'System' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
+
 export function Layout() {
   const { session, signOut, hasRole } = useAuth();
+  const { pathname } = useLocation();
+  const [theme, setTheme] = useState<ThemeChoice>(getThemeChoice);
   const committee = hasRole('committee');
+  const skateSchool = committee || hasRole('coach');
+
+  const inMembers =
+    pathname === '/' || pathname.startsWith('/people') || pathname.startsWith('/import') || pathname.startsWith('/settings');
+  const inSkateSchool = pathname.startsWith('/skate-school') || pathname.startsWith('/badges');
+  const inAdmin = pathname.startsWith('/access');
+
   return (
     <>
       {envLabel && <div className="env-banner">{envLabel}: test data only</div>}
       <header className="site-header">
         <div className="site-header-inner">
-          <span className="brand">WFSC Members</span>
-          <nav aria-label="Main">
-            {committee && (
-              <>
-                <NavLink to="/" end>Members</NavLink>
-                <NavLink to="/people/new">Add member</NavLink>
-              </>
-            )}
-            {(committee || hasRole('coach')) && (
-              <>
-                <NavLink to="/skate-school">Skate school</NavLink>
-                <NavLink to="/badges">Badges</NavLink>
-              </>
-            )}
-            {committee && (
-              <>
-                <NavLink to="/settings/member-types">Member types</NavLink>
-                <NavLink to="/import">Import</NavLink>
-              </>
-            )}
-            {hasRole('admin') && <NavLink to="/access">Access</NavLink>}
-          </nav>
-          <span className="user">
-            <span className="user-email">{session?.user.email}</span>
-            <button type="button" className="link-button" onClick={() => void signOut()}>
-              Sign out
-            </button>
+          <span className="brand">
+            <img src="favicon.svg" alt="" width={24} height={24} /> WFSC
           </span>
+          <nav aria-label="Main" className="main-nav">
+            {committee && (
+              <Menu label="Members" active={inMembers}>
+                {() => (
+                  <>
+                    <MenuLink to="/" end>
+                      Member list
+                    </MenuLink>
+                    <MenuLink to="/people/new">Add member</MenuLink>
+                    <MenuLink to="/import">Import</MenuLink>
+                    <MenuLink to="/settings/member-types">Member types</MenuLink>
+                  </>
+                )}
+              </Menu>
+            )}
+            {skateSchool && (
+              <Menu label="Skate School" active={inSkateSchool}>
+                {() => (
+                  <>
+                    <MenuLink to="/skate-school">Terms and classes</MenuLink>
+                    <MenuLink to="/badges">Badges</MenuLink>
+                  </>
+                )}
+              </Menu>
+            )}
+            {hasRole('admin') && (
+              <Menu label="Admin" active={inAdmin}>
+                {() => <MenuLink to="/access">Access</MenuLink>}
+              </Menu>
+            )}
+          </nav>
+          <Menu label={<span className="user-email">{session?.user.email}</span>} align="right">
+            {(close) => (
+              <>
+                <div className="menu-heading" id="theme-heading">
+                  Theme
+                </div>
+                <div role="group" aria-labelledby="theme-heading">
+                  {THEMES.map((t) => (
+                    <button
+                      key={t.value}
+                      type="button"
+                      className="menu-item"
+                      aria-pressed={theme === t.value}
+                      onClick={() => {
+                        setThemeChoice(t.value);
+                        setTheme(t.value);
+                        close();
+                      }}
+                    >
+                      <span className="menu-check" aria-hidden="true">
+                        {theme === t.value ? '●' : ''}
+                      </span>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                <hr />
+                <button type="button" className="menu-item" onClick={() => void signOut()}>
+                  Sign out
+                </button>
+              </>
+            )}
+          </Menu>
         </div>
       </header>
       <main className="page">

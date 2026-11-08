@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#1f5fa8"/>
+  <!-- Figure skate: boot, blade posts and a blade with a curled toe pick -->
+  <path d="M17 11h15v17c0 3 2.5 5 7 6l7.5 1.6c3.4.7 5 2.8 5 5.6V45H17z" fill="#fff"/>
+  <path d="M22 45v5M44 45v5" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M12 51h37c4 0 6.5-2.3 6.5-5.5" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+</svg>

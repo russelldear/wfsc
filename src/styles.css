@@ -14,11 +14,13 @@
   --warn-text: #7a5300;
   --banner-bg: #7a5300;
   --banner-text: #ffffff;
-  color-scheme: light dark;
+  --shadow: 0 6px 20px rgb(0 0 0 / 0.12);
+  color-scheme: light;
 }
 
+/* Dark: follow the system unless the viewer chose light; or when they chose dark. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #14181e;
     --surface: #1d232b;
     --text: #e6eaf0;
@@ -32,7 +34,27 @@
     --lapsed-text: #f2a597;
     --warn-bg: #3b2f10;
     --warn-text: #f3d183;
+    color-scheme: dark;
+    --shadow: 0 6px 20px rgb(0 0 0 / 0.45);
   }
+}
+
+:root[data-theme='dark'] {
+  --bg: #14181e;
+  --surface: #1d232b;
+  --text: #e6eaf0;
+  --muted: #a0aab8;
+  --border: #353e4a;
+  --accent: #6ea8ec;
+  --accent-text: #0e1620;
+  --ok-bg: #173523;
+  --ok-text: #8fdca8;
+  --lapsed-bg: #3d1d18;
+  --lapsed-text: #f2a597;
+  --warn-bg: #3b2f10;
+  --warn-text: #f3d183;
+  color-scheme: dark;
+  --shadow: 0 6px 20px rgb(0 0 0 / 0.45);
 }
 
 * {
@@ -89,36 +111,112 @@ h2 {
   font-weight: 700;
 }
 
-nav {
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.main-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 0.25rem;
 }
 
-nav a {
-  text-decoration: none;
+.menu {
+  position: relative;
+}
+
+.menu-right {
+  margin-left: auto;
+}
+
+.menu-button {
+  border: none;
+  background: none;
   color: var(--muted);
+  padding: 0.4rem 0.6rem;
 }
 
-nav a.active {
+.menu-button:hover,
+.menu-button[aria-expanded='true'] {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.menu-button.active {
   color: var(--text);
   font-weight: 600;
 }
 
-.user {
-  margin-left: auto;
+.menu-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 10;
+  min-width: 12rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 0.3rem;
+  display: grid;
+}
+
+.menu-right .menu-list {
+  left: auto;
+  right: 0;
+}
+
+.menu-item {
   display: flex;
-  gap: 0.75rem;
   align-items: center;
+  gap: 0.4rem;
+  text-align: left;
+  width: 100%;
+  border: none;
+  background: none;
+  color: var(--text);
+  text-decoration: none;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.menu-item:hover {
+  background: var(--bg);
+}
+
+.menu-item.active {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.menu-heading {
+  font-size: 0.8rem;
   color: var(--muted);
-  font-size: 0.9rem;
-  min-width: 0;
+  padding: 0.3rem 0.6rem 0.1rem;
+}
+
+.menu-check {
+  width: 1rem;
+  font-size: 0.7rem;
+  color: var(--accent);
+}
+
+.menu-list hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0.3rem 0;
 }
 
 .user-email {
+  display: inline-block;
+  max-width: 14rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  vertical-align: bottom;
 }
 
 .page {
@@ -541,21 +639,52 @@ ol.skills label.checkbox input {
   margin-top: 0.25rem;
 }
 
+.skill-rows .skill-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.25rem 0.75rem;
+}
+
 .tick-meta {
   display: flex;
-  flex-wrap: wrap;
   gap: 0.5rem;
-  margin: 0.25rem 0 0 1.6rem;
+  /* Space is kept even when unticked, so rows line up and nothing moves. */
+  width: 21rem;
+  min-height: 1.9rem;
 }
 
 .tick-meta input {
   font-size: 0.85rem;
   padding: 0.2rem 0.4rem;
+  /* Exactly the reserved height, so a row is the same height ticked or not. */
+  height: 1.9rem;
 }
 
-ol.teaching {
-  color: var(--muted);
-  padding-left: 1.5rem;
+.tick-meta input[type='date'] {
+  width: 9rem;
+}
+
+.tick-meta input:not([type='date']) {
+  flex: 1;
+  min-width: 0;
+}
+
+.tick-all {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+}
+
+/* Narrow screens: not enough room beside, so the date and note go below. */
+@media (max-width: 640px) {
+  .skill-rows .skill-row {
+    grid-template-columns: 1fr;
+  }
+  .tick-meta {
+    width: auto;
+    min-height: 0;
+    margin-left: 1.6rem;
+  }
 }
 
 details summary {
