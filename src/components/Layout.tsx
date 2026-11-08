@@ -12,91 +12,151 @@ const THEMES: { value: ThemeChoice; label: string }[] = [
   { value: 'dark', label: 'Dark' },
 ];
 
-export function Layout() {
-  const { session, signOut, hasRole } = useAuth();
+interface Section {
+  label: string;
+  active: boolean;
+  items: { to: string; label: string; end?: boolean }[];
+}
+
+/** The menu sections this person can use. */
+function useSections(): Section[] {
+  const { hasRole } = useAuth();
   const { pathname } = useLocation();
-  const [theme, setTheme] = useState<ThemeChoice>(getThemeChoice);
   const committee = hasRole('committee');
   const admin = hasRole('admin');
-  const skateSchool = committee || hasRole('coach');
+  const sections: Section[] = [];
+  if (committee) {
+    sections.push({
+      label: 'Members',
+      active: pathname === '/' || pathname.startsWith('/people'),
+      items: [
+        { to: '/', label: 'Member list', end: true },
+        { to: '/people/new', label: 'Add member' },
+      ],
+    });
+  }
+  if (committee || hasRole('coach')) {
+    sections.push({
+      label: 'Skate School',
+      active: pathname.startsWith('/skate-school'),
+      items: [{ to: '/skate-school', label: 'Terms and classes' }],
+    });
+  }
+  if (admin) {
+    sections.push({
+      label: 'Admin',
+      active: ['/access', '/import', '/settings', '/badges'].some((p) => pathname.startsWith(p)),
+      items: [
+        // Importing creates people, so it also needs the committee role.
+        ...(committee ? [{ to: '/import', label: 'Import' }] : []),
+        { to: '/settings/member-types', label: 'Member types' },
+        { to: '/badges', label: 'Badges' },
+        { to: '/access', label: 'Access' },
+      ],
+    });
+  }
+  return sections;
+}
 
-  const inMembers = pathname === '/' || pathname.startsWith('/people');
-  const inSkateSchool = pathname.startsWith('/skate-school');
-  const inAdmin = ['/access', '/import', '/settings', '/badges'].some((p) => pathname.startsWith(p));
+function AccountItems({ close }: { close: () => void }) {
+  const { signOut } = useAuth();
+  const [theme, setTheme] = useState<ThemeChoice>(getThemeChoice);
+  return (
+    <>
+      <div className="menu-heading" id="theme-heading">
+        Theme
+      </div>
+      <div role="group" aria-labelledby="theme-heading">
+        {THEMES.map((t) => (
+          <button
+            key={t.value}
+            type="button"
+            className="menu-item"
+            aria-pressed={theme === t.value}
+            onClick={() => {
+              setThemeChoice(t.value);
+              setTheme(t.value);
+              close();
+            }}
+          >
+            <span className="menu-check" aria-hidden="true">
+              {theme === t.value ? '●' : ''}
+            </span>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <hr />
+      <button type="button" className="menu-item" onClick={() => void signOut()}>
+        Sign out
+      </button>
+    </>
+  );
+}
+
+const Logo = () => <img src="logo-64.png" alt="" width={32} height={32} className="brand-logo" />;
+
+export function Layout() {
+  const { session } = useAuth();
+  const sections = useSections();
+  const email = session?.user.email;
 
   return (
     <>
       {envLabel && <div className="env-banner">{envLabel}: test data only</div>}
       <header className="site-header">
-        <div className="site-header-inner">
+        {/* Wide screens: name links home, one menu per section, account menu on the right. */}
+        <div className="site-header-inner header-wide">
           {/* Home: the member list for the committee; others are sent on to their first page. */}
           <Link to="/" className="brand">
-            <img src="logo-64.png" alt="" width={32} height={32} className="brand-logo" />
+            <Logo />
             Wellington Figure Skating Club
           </Link>
           <nav aria-label="Main" className="main-nav">
-            {committee && (
-              <Menu label="Members" active={inMembers}>
-                {() => (
-                  <>
-                    <MenuLink to="/" end>
-                      Member list
+            {sections.map((s) => (
+              <Menu key={s.label} label={s.label} active={s.active}>
+                {() =>
+                  s.items.map((i) => (
+                    <MenuLink key={i.to} to={i.to} end={i.end}>
+                      {i.label}
                     </MenuLink>
-                    <MenuLink to="/people/new">Add member</MenuLink>
-                  </>
-                )}
+                  ))
+                }
               </Menu>
-            )}
-            {skateSchool && (
-              <Menu label="Skate School" active={inSkateSchool}>
-                {() => <MenuLink to="/skate-school">Terms and classes</MenuLink>}
-              </Menu>
-            )}
-            {admin && (
-              <Menu label="Admin" active={inAdmin}>
-                {() => (
-                  <>
-                    {/* Importing creates people, so it also needs the committee role. */}
-                    {committee && <MenuLink to="/import">Import</MenuLink>}
-                    <MenuLink to="/settings/member-types">Member types</MenuLink>
-                    <MenuLink to="/badges">Badges</MenuLink>
-                    <MenuLink to="/access">Access</MenuLink>
-                  </>
-                )}
-              </Menu>
-            )}
+            ))}
           </nav>
-          <Menu label={<span className="user-email">{session?.user.email}</span>} align="right">
+          <Menu label={<span className="user-email">{email}</span>} align="right">
+            {(close) => <AccountItems close={close} />}
+          </Menu>
+        </div>
+
+        {/* Narrow screens: everything in one menu under the club name. */}
+        <div className="site-header-inner header-narrow">
+          <Menu
+            className="menu-mobile"
+            label={
+              <span className="brand">
+                <Logo />
+                Wellington Figure Skating Club
+              </span>
+            }
+          >
             {(close) => (
-              <>
-                <div className="menu-heading" id="theme-heading">
-                  Theme
-                </div>
-                <div role="group" aria-labelledby="theme-heading">
-                  {THEMES.map((t) => (
-                    <button
-                      key={t.value}
-                      type="button"
-                      className="menu-item"
-                      aria-pressed={theme === t.value}
-                      onClick={() => {
-                        setThemeChoice(t.value);
-                        setTheme(t.value);
-                        close();
-                      }}
-                    >
-                      <span className="menu-check" aria-hidden="true">
-                        {theme === t.value ? '●' : ''}
-                      </span>
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
+              <nav aria-label="Main">
+                {sections.map((s) => (
+                  <div key={s.label} className="menu-section">
+                    <div className="menu-heading">{s.label}</div>
+                    {s.items.map((i) => (
+                      <MenuLink key={i.to} to={i.to} end={i.end}>
+                        {i.label}
+                      </MenuLink>
+                    ))}
+                  </div>
+                ))}
                 <hr />
-                <button type="button" className="menu-item" onClick={() => void signOut()}>
-                  Sign out
-                </button>
-              </>
+                <div className="menu-heading menu-email">{email}</div>
+                <AccountItems close={close} />
+              </nav>
             )}
           </Menu>
         </div>

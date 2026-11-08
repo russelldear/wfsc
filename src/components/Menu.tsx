@@ -2,7 +2,13 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router';
 
 /** A top-bar menu button with a dropdown. Closes on outside click, Escape, or choosing an item. */
-export function Menu(props: { label: ReactNode; active?: boolean; align?: 'left' | 'right'; children: (close: () => void) => ReactNode }) {
+export function Menu(props: {
+  label: ReactNode;
+  active?: boolean;
+  align?: 'left' | 'right';
+  className?: string;
+  children: (close: () => void) => ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const id = useId();
@@ -32,7 +38,7 @@ export function Menu(props: { label: ReactNode; active?: boolean; align?: 'left'
   }, [open]);
 
   return (
-    <div className={`menu ${props.align === 'right' ? 'menu-right' : ''}`} ref={ref}>
+    <div className={`menu ${props.align === 'right' ? 'menu-right' : ''} ${props.className ?? ''}`} ref={ref}>
       <button
         type="button"
         className={`menu-button ${props.active ? 'active' : ''}`}
@@ -43,7 +49,14 @@ export function Menu(props: { label: ReactNode; active?: boolean; align?: 'left'
         {props.label} <span aria-hidden="true">▾</span>
       </button>
       {open && (
-        <div className="menu-list" id={id}>
+        <div
+          className="menu-list"
+          id={id}
+          // Choosing any link closes the menu, including a link to the current page.
+          onClick={(e) => {
+            if ((e.target as Element).closest('a')) setOpen(false);
+          }}
+        >
           {props.children(() => setOpen(false))}
         </div>
       )}
