@@ -8,6 +8,8 @@ import type {
   BadgeSkill,
   BadgeSkillKind,
   BadgeStream,
+  ClassDetail,
+  ClassSkater,
   Contact,
   Lookups,
   MemberSummary,
@@ -15,7 +17,10 @@ import type {
   PersonDetail,
   PersonFields,
   SkaterProgress,
+  SkateClass,
+  SkateClassFields,
   SkillAchievement,
+  Term,
 } from './types';
 
 /** Turns database errors into messages a committee member can act on. */
@@ -25,12 +30,24 @@ export function friendlyError(error: unknown): string {
     if (e.message?.includes('person_id_season_start')) {
       return 'That person already has a membership for that season.';
     }
+    if (e.message?.includes('person_id_term_id')) {
+      return 'That skater is already in a class this term.';
+    }
+    if (e.message?.includes('skate_class_term_id_name')) {
+      return 'There is already a class with that name this term.';
+    }
+    if (e.message?.includes('term_name')) {
+      return 'There is already a term with that name.';
+    }
     if (e.message?.includes('membership_number')) {
       return 'That membership number is already in use.';
     }
     return 'That would create a duplicate.';
   }
   if (e?.code === '23503') {
+    if (e.message?.includes('skate_class_term_id_fkey')) {
+      return 'That term still has classes. Delete its classes first.';
+    }
     return 'That is still in use, so it cannot be removed.';
   }
   if (e?.code === '42501') {
@@ -46,6 +63,7 @@ function check<T>(result: { data: T | null; error: PostgrestError | null }): T {
 
 const PERSON_SELECT = `
   *,
+  enrolment(term_id, class_id, skate_class(id, name, term(id, name, starts_on))),
   contact(*),
   person_ethnicity(ethnicity_code),
   person_other_club(id, club_name),
@@ -297,4 +315,166 @@ export async function updateBadge(
   changes: { description?: string | null; prerequisite_id?: number | null; max_age?: number | null },
 ) {
   check(await supabase.from('badge').update(changes).eq('id', id));
+}
+
+/** Ticks and passes for several skaters at once (e.g. a class). */
+export async function getProgressForPeople(personIds: string[]): Promise<Map<string, SkaterProgress>> {
+  const result = new Map<string, SkaterProgress>(personIds.map((id) => [id, { achievements: [], passes: [] }]));
+  if (personIds.length === 0) return result;
+  const [achievements, passes] = await Promise.all([
+    supabase.from('skill_achievement').select('person_id, skill_id, achieved_on, note').in('person_id', personIds),
+    supabase.from('badge_pass').select('*').in('person_id', personIds),
+  ]);
+  for (const a of check(achievements) as SkillAchievement[]) result.get(a.person_id)?.achievements.push(a);
+  for (const p of check(passes) as BadgePass[]) result.get(p.person_id)?.passes.push(p);
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Terms, classes and enrolments
+// ---------------------------------------------------------------------------
+
+export async function listTerms(): Promise<Term[]> {
+  return check(await supabase.from('term').select('*').order('starts_on', { ascending: false })) as Term[];
+}
+
+export async function getCurrentTermId(): Promise<string | null> {
+  return check(await supabase.rpc('current_term_id')) as string | null;
+}
+
+export async function createTerm(input: Omit<Term, 'id'>): Promise<string> {
+  const row = check(await supabase.from('term').insert(input).select('id').single()) as { id: string };
+  return row.id;
+}
+
+export async function updateTerm(id: string, changes: Partial<Omit<Term, 'id'>>) {
+  check(await supabase.from('term').update(changes).eq('id', id));
+}
+
+export async function deleteTerm(id: string) {
+  check(await supabase.from('term').delete().eq('id', id));
+}
+
+interface ClassRow extends SkateClassFields {
+  id: string;
+  term_id: string;
+  skate_class_badge: { badge_id: number }[];
+  enrolment: { count: number }[];
+}
+
+function toSkateClass(r: ClassRow): SkateClass {
+  return {
+    id: r.id,
+    term_id: r.term_id,
+    name: r.name,
+    starts_at: r.starts_at,
+    ends_at: r.ends_at,
+    min_age: r.min_age,
+    max_age: r.max_age,
+    coach_name: r.coach_name,
+    badge_ids: r.skate_class_badge.map((b) => b.badge_id),
+    enrolled: r.enrolment[0]?.count ?? 0,
+  };
+}
+
+export async function listClasses(termId: string): Promise<SkateClass[]> {
+  const rows = check(
+    await supabase
+      .from('skate_class')
+      .select('*, skate_class_badge(badge_id), enrolment(count)')
+      .eq('term_id', termId)
+      .order('starts_at', { nullsFirst: false })
+      .order('name'),
+  ) as ClassRow[];
+  return rows.map(toSkateClass);
+}
+
+export async function getClass(id: string): Promise<ClassDetail> {
+  const row = check(
+    await supabase
+      .from('skate_class')
+      .select(
+        '*, skate_class_badge(badge_id), enrolment(count), term(*), ' +
+          'skaters:enrolment(person(id, first_name, last_name, membership_number, date_of_birth))',
+      )
+      .eq('id', id)
+      .single(),
+  ) as unknown as ClassRow & { term: Term; skaters: { person: ClassSkater }[] };
+  return {
+    ...toSkateClass(row),
+    term: row.term,
+    skaters: row.skaters
+      .map((s) => s.person)
+      .sort((a, b) => a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name)),
+  };
+}
+
+export async function saveClass(
+  input: { id?: string; term_id: string; fields: SkateClassFields; badge_ids: number[] },
+): Promise<string> {
+  let id = input.id;
+  if (id) {
+    check(await supabase.from('skate_class').update(input.fields).eq('id', id));
+  } else {
+    const row = check(
+      await supabase.from('skate_class').insert({ ...input.fields, term_id: input.term_id }).select('id').single(),
+    ) as { id: string };
+    id = row.id;
+  }
+  const current = check(
+    await supabase.from('skate_class_badge').select('badge_id').eq('class_id', id),
+  ) as { badge_id: number }[];
+  const have = new Set(current.map((c) => c.badge_id));
+  const want = new Set(input.badge_ids);
+  const remove = [...have].filter((b) => !want.has(b));
+  const add = [...want].filter((b) => !have.has(b));
+  if (remove.length) {
+    check(await supabase.from('skate_class_badge').delete().eq('class_id', id).in('badge_id', remove));
+  }
+  if (add.length) {
+    check(await supabase.from('skate_class_badge').insert(add.map((badge_id) => ({ class_id: id, badge_id }))));
+  }
+  return id;
+}
+
+export async function deleteClass(id: string) {
+  check(await supabase.from('skate_class').delete().eq('id', id));
+}
+
+/** Copies a term's classes (names, times, ages, coach, badges) into another term, without skaters. */
+export async function copyClasses(fromTermId: string, toTermId: string) {
+  for (const c of await listClasses(fromTermId)) {
+    await saveClass({
+      term_id: toTermId,
+      fields: {
+        name: c.name,
+        starts_at: c.starts_at,
+        ends_at: c.ends_at,
+        min_age: c.min_age,
+        max_age: c.max_age,
+        coach_name: c.coach_name,
+      },
+      badge_ids: c.badge_ids,
+    });
+  }
+}
+
+export async function listEnrolments(termId: string): Promise<{ class_id: string; person_id: string }[]> {
+  return check(
+    await supabase.from('enrolment').select('class_id, person_id').eq('term_id', termId),
+  ) as { class_id: string; person_id: string }[];
+}
+
+export async function enrol(classId: string, personId: string) {
+  check(await supabase.from('enrolment').insert({ class_id: classId, person_id: personId }));
+}
+
+export async function moveEnrolment(personId: string, termId: string, toClassId: string) {
+  check(
+    await supabase.from('enrolment').update({ class_id: toClassId }).eq('person_id', personId).eq('term_id', termId),
+  );
+}
+
+export async function unenrol(personId: string, termId: string) {
+  check(await supabase.from('enrolment').delete().eq('person_id', personId).eq('term_id', termId));
 }

@@ -40,6 +40,8 @@ Supabase (Postgres + Auth)
 | `badge_stream`, `badge`, `badge_skill` | Kiwiskate badges and their skills (see below). |
 | `skill_achievement` | Assessment skills a skater has achieved, with date and optional note. |
 | `badge_pass` | Badges a skater has passed, with date and assessor. |
+| `term`, `skate_class`, `skate_class_badge` | Skate school terms, their classes, and the badges each class covers. |
+| `enrolment` | Which class a skater is in for a term (at most one per term). |
 | `user_role` | Who can use the app. |
 | `audit_log` | Change history. |
 
@@ -160,6 +162,7 @@ How the Sheet's columns are read:
   contact's name, to tidy up later.
 - **card done?** = Y is recorded as a card issued on the import date.
 - **Age** isn't imported. Add dates of birth later.
+- **Skater** isn't imported: enrol skaters in classes instead.
 - Rows whose membership number is already in the database are skipped, so
   re-importing the same file doesn't create duplicates.
 
@@ -191,6 +194,25 @@ edit them on the **Badges** page.
 Wording changes from the PDF: trailing full stops added where missing, an
 unmatched closing bracket removed from Advanced teaching idea 4, and the
 Synchronized Skating introductions turned into sentences.
+
+## Skate school terms and classes
+
+The **Skate school** page lists a term's classes, lets the committee add terms
+and classes, and shows who is **ready to test**. Each class page has the
+roster (enrol, move, remove) and a **progress grid**: skaters down the side,
+the class's badges' assessment skills across the top, ticked against the
+session date at the top of the grid.
+
+- A skater is in at most one class per term (enforced by the database).
+- A class can cover several badges (e.g. "Elementary and Basic levels"). A
+  class with no badges set (e.g. Invitational) shows each skater's own
+  current badges instead of a grid.
+- Age guidance on a class warns when enrolling someone outside it, judged at
+  the start of term; it does not block.
+- **Current term** = the latest term that has started. Between terms that is
+  the one just finished. "In skate school" on the member list and the CSV
+  export's Skater column mean "enrolled in a class in the current term".
+- **New term** can copy the previous term's classes (without skaters).
 
 ## Backups
 

@@ -187,7 +187,8 @@ export function ImportPage() {
                 )}
                 <li>
                   "Card done?" = Y is recorded as a card issued today, since the Sheet has no date.
-                  Ages are not imported.
+                  Ages are not imported. The Skater column is not imported: enrol skaters in a class
+                  on the Skate school page instead.
                 </li>
               </ul>
 

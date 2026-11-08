@@ -26,7 +26,9 @@ function person(overrides: Partial<PersonDetail> = {}): PersonDetail {
     country: 'New Zealand',
     email: 'family@example.test',
     phone: '+64 21 000 0000',
-    in_skate_school: true,
+    enrolment: [
+      { term_id: 't-now', class_id: 'c1', skate_class: { id: 'c1', name: 'Beginner', term: { id: 't-now', name: 'Term', starts_on: '2026-10-12' } } },
+    ],
     member_since: '2022-10-01',
     coc_agreed_on: '2022-10-01',
     waiver_agreed_on: '2022-10-02',
@@ -66,12 +68,12 @@ function person(overrides: Partial<PersonDetail> = {}): PersonDetail {
 
 describe('memberExportRows', () => {
   it('produces one value per sheet column', () => {
-    const [row] = memberExportRows([person()], lookups, '2026-11-07');
+    const [row] = memberExportRows([person()], lookups, '2026-11-07', 't-now');
     expect(row).toHaveLength(SHEET_HEADERS.length);
   });
 
   it('maps a member to the sheet columns using their latest membership', () => {
-    const [row] = memberExportRows([person()], lookups, '2026-11-07');
+    const [row] = memberExportRows([person()], lookups, '2026-11-07', 't-now');
     const byHeader = Object.fromEntries(SHEET_HEADERS.map((h, i) => [h, row![i]]));
     expect(byHeader).toMatchObject({
       'Membership #': '22/012',
@@ -91,8 +93,14 @@ describe('memberExportRows', () => {
     });
   });
 
+  it('marks Skater only for enrolment in the current term', () => {
+    const skaterColumn = SHEET_HEADERS.indexOf('Skater');
+    expect(memberExportRows([person()], lookups, '2026-11-07', 'another-term')[0]![skaterColumn]).toBe('N');
+    expect(memberExportRows([person()], lookups, '2026-11-07', null)[0]![skaterColumn]).toBe('N');
+  });
+
   it('leaves out people who have never had a membership', () => {
-    const rows = memberExportRows([person({ membership_member: [] })], lookups, '2026-11-07');
+    const rows = memberExportRows([person({ membership_member: [] })], lookups, '2026-11-07', 't-now');
     expect(rows).toHaveLength(0);
   });
 
@@ -106,6 +114,7 @@ describe('memberExportRows', () => {
       ],
       lookups,
       '2026-11-07',
+      't-now',
     );
     // By the running counter, whatever the year prefix.
     expect(rows.map((r) => r[0])).toEqual(['22/105', '23/106', '20/1000', '']);

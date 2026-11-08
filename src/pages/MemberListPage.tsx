@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { useAsync } from '../components/useAsync';
-import { fetchLookups, friendlyError, listMembers, listPeopleForExport } from '../lib/api';
+import { fetchLookups, friendlyError, getCurrentTermId, listMembers, listPeopleForExport } from '../lib/api';
 import { downloadCsv, toCsv } from '../lib/csv';
 import { formatDate, nzToday } from '../lib/dates';
 import { SHEET_HEADERS, memberExportRows } from '../lib/exportMembers';
@@ -55,9 +55,9 @@ export function MemberListPage() {
     setExporting(true);
     setExportError(null);
     try {
-      const [people, lookups] = await Promise.all([listPeopleForExport(), fetchLookups()]);
+      const [people, lookups, termId] = await Promise.all([listPeopleForExport(), fetchLookups(), getCurrentTermId()]);
       const today = nzToday();
-      const csv = toCsv([[...SHEET_HEADERS], ...memberExportRows(people, lookups, today)]);
+      const csv = toCsv([[...SHEET_HEADERS], ...memberExportRows(people, lookups, today, termId)]);
       downloadCsv(`wfsc-members-${today}.csv`, csv);
     } catch (e) {
       setExportError(friendlyError(e));

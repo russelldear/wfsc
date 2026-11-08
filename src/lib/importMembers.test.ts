@@ -90,7 +90,6 @@ describe('interpretSheet', () => {
       person: {
         membership_number: '22/042',
         gender_code: 'female',
-        in_skate_school: true,
         coc_agreed_on: '2022-10-01',
         member_since: '2022-10-01',
         date_of_birth: null,

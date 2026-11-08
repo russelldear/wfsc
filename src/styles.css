@@ -593,3 +593,93 @@ details summary {
 .subform .grow {
   flex: 1 1 14rem;
 }
+
+/* Terms and classes */
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.roster {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.roster li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+}
+
+.roster-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.ready-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.badges-covered {
+  display: grid !important;
+  gap: 0.35rem;
+}
+
+.stream-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  align-items: center;
+}
+
+.grid-table th,
+.grid-table td {
+  padding: 0.3rem 0.4rem;
+  text-align: center;
+}
+
+.grid-table .skater-name {
+  text-align: left;
+  white-space: nowrap;
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+  z-index: 1;
+}
+
+.grid-table th.badge-group {
+  text-align: center;
+  border-left: 2px solid var(--border);
+}
+
+.grid-table .group-start {
+  border-left: 2px solid var(--border);
+}
+
+.grid-table .skill-col {
+  cursor: help;
+  min-width: 2rem;
+}
+
+.grid-table td.passed {
+  background: var(--ok-bg);
+  color: var(--ok-text);
+}
+
+.grid-table input[type='checkbox'] {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.skill-key {
+  margin-top: 1rem;
+}

@@ -52,6 +52,8 @@ export function memberExportRows(
   people: PersonDetail[],
   lookups: Lookups,
   today: string,
+  /** Skater = Y when enrolled in a class in this term. */
+  currentTermId: string | null,
 ): string[][] {
   const gender = new Map(lookups.genders.map((g) => [g.code, g.label]));
   const ethnicity = new Map(lookups.ethnicities.map((e) => [e.code, e]));
@@ -82,7 +84,7 @@ export function memberExportRows(
       p.last_name,
       p.date_of_birth ? String(ageOn(p.date_of_birth, today)) : '',
       p.gender_code ? (gender.get(p.gender_code) ?? p.gender_code) : '',
-      p.in_skate_school ? 'Y' : 'N',
+      currentTermId && p.enrolment.some((e) => e.term_id === currentTermId) ? 'Y' : 'N',
       ethnicities,
       p.address_line ?? '',
       p.town_city ?? '',

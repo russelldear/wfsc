@@ -18,7 +18,6 @@ const EMPTY: PersonFields = {
   country: 'New Zealand',
   email: null,
   phone: null,
-  in_skate_school: false,
   member_since: null,
   coc_agreed_on: null,
   waiver_agreed_on: null,
@@ -183,18 +182,6 @@ function PersonForm({ lookups, existing }: { lookups: Lookups; existing: PersonD
           ))}
         </fieldset>
         <p className="hint">Gender and ethnicity are optional and are used for NZIFSA and Sport NZ reporting.</p>
-      </fieldset>
-
-      <fieldset>
-        <legend>Skate school</legend>
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={fields.in_skate_school}
-            onChange={(e) => set('in_skate_school', e.target.checked)}
-          />
-          Enrolled in the skate school
-        </label>
       </fieldset>
 
       <fieldset>

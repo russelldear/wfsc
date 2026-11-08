@@ -2,11 +2,13 @@ import { HashRouter, Route, Routes } from 'react-router';
 import { AuthProvider, useAuth } from './auth/AuthProvider';
 import { CenteredCard, Layout } from './components/Layout';
 import { BadgesPage } from './pages/BadgesPage';
+import { ClassPage } from './pages/ClassPage';
 import { ImportPage } from './pages/ImportPage';
 import { MemberListPage } from './pages/MemberListPage';
 import { MemberTypesPage } from './pages/MemberTypesPage';
 import { PersonFormPage } from './pages/PersonFormPage';
 import { PersonPage } from './pages/PersonPage';
+import { SkateSchoolPage } from './pages/SkateSchoolPage';
 
 function Gate() {
   const { status, session, error, signIn, signOut } = useAuth();
@@ -55,6 +57,8 @@ function Gate() {
           <Route path="settings/member-types" element={<MemberTypesPage />} />
           <Route path="import" element={<ImportPage />} />
           <Route path="badges" element={<BadgesPage />} />
+          <Route path="skate-school" element={<SkateSchoolPage />} />
+          <Route path="skate-school/classes/:id" element={<ClassPage />} />
           <Route path="*" element={<p>Page not found.</p>} />
         </Route>
       </Routes>

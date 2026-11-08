@@ -39,7 +39,6 @@ export interface PersonFields {
   country: string | null;
   email: string | null;
   phone: string | null;
-  in_skate_school: boolean;
   member_since: string | null;
   coc_agreed_on: string | null;
   waiver_agreed_on: string | null;
@@ -90,7 +89,14 @@ export interface PersonMembershipLink {
   membership: Membership;
 }
 
+export interface PersonEnrolment {
+  term_id: string;
+  class_id: string;
+  skate_class: { id: string; name: string; term: { id: string; name: string; starts_on: string } };
+}
+
 export interface PersonDetail extends Person {
+  enrolment: PersonEnrolment[];
   contact: Contact[];
   person_ethnicity: { ethnicity_code: string }[];
   person_other_club: { id: string; club_name: string }[];
@@ -173,4 +179,42 @@ export interface BadgePass {
 export interface SkaterProgress {
   achievements: SkillAchievement[];
   passes: BadgePass[];
+}
+
+// Terms, classes and enrolments (stage 3b)
+
+export interface Term {
+  id: string;
+  name: string;
+  starts_on: string;
+  ends_on: string;
+}
+
+export interface SkateClassFields {
+  name: string;
+  starts_at: string | null;
+  ends_at: string | null;
+  min_age: number | null;
+  max_age: number | null;
+  coach_name: string | null;
+}
+
+export interface SkateClass extends SkateClassFields {
+  id: string;
+  term_id: string;
+  badge_ids: number[];
+  enrolled: number;
+}
+
+export interface ClassSkater {
+  id: string;
+  first_name: string;
+  last_name: string;
+  membership_number: string | null;
+  date_of_birth: string | null;
+}
+
+export interface ClassDetail extends SkateClass {
+  term: Term;
+  skaters: ClassSkater[];
 }

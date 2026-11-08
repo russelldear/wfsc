@@ -66,7 +66,6 @@ export function PersonPage() {
             <Field label="Email">{p.email && <a href={`mailto:${p.email}`}>{p.email}</a>}</Field>
             <Field label="Phone">{p.phone}</Field>
             <Field label="Address">{address}</Field>
-            <Field label="In skate school">{p.in_skate_school ? 'Yes' : 'No'}</Field>
             <Field label="Member since">{formatDate(p.member_since)}</Field>
             <Field label="Other clubs">
               {p.person_other_club.map((c) => c.club_name).sort().join(', ')}
@@ -101,7 +100,7 @@ export function PersonPage() {
       <MembershipsPanel person={p} lookups={l} onChange={person.reload} />
 
       {catalog.error && <p className="error">{catalog.error}</p>}
-      {catalog.data && <SkateSchoolPanel person={p} catalog={catalog.data} />}
+      {catalog.data && <SkateSchoolPanel person={p} catalog={catalog.data} onPersonChange={person.reload} />}
     </>
   );
 }

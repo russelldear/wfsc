@@ -1,9 +1,16 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { useAsync } from '../components/useAsync';
 import {
   deleteBadgePass,
+  enrol,
   friendlyError,
+  getCurrentTermId,
   getSkaterProgress,
+  listClasses,
+  listTerms,
+  moveEnrolment,
+  unenrol,
   recordBadgePass,
   tickSkill,
   untickSkill,
@@ -16,9 +23,10 @@ import type { AssessorType, BadgeCatalog, PersonDetail, SkillAchievement } from 
 interface Props {
   person: PersonDetail;
   catalog: BadgeCatalog;
+  onPersonChange: () => void;
 }
 
-export function SkateSchoolPanel({ person, catalog }: Props) {
+export function SkateSchoolPanel({ person, catalog, onPersonChange }: Props) {
   const progress = useAsync(() => getSkaterProgress(person.id), [person.id]);
   const [tickDate, setTickDate] = useState(nzToday());
   const [showAll, setShowAll] = useState(false);
@@ -86,6 +94,8 @@ export function SkateSchoolPanel({ person, catalog }: Props) {
         </div>
       </div>
       {error && <p className="error">{error}</p>}
+
+      <ClassThisTerm person={person} onChange={onPersonChange} />
 
       <h3>Badges passed</h3>
       {passed.length === 0 ? (
@@ -314,5 +324,83 @@ function RecordPassForm(props: {
         </button>
       </div>
     </form>
+  );
+}
+
+function ClassThisTerm({ person, onChange }: { person: PersonDetail; onChange: () => void }) {
+  const term = useAsync(async () => {
+    const [currentId, terms] = await Promise.all([getCurrentTermId(), listTerms()]);
+    // The current term, or the newest one if none has started yet.
+    const t = terms.find((x) => x.id === currentId) ?? terms[0] ?? null;
+    return t ? { term: t, classes: await listClasses(t.id) } : null;
+  }, []);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function run(action: () => Promise<unknown>) {
+    setBusy(true);
+    setError(null);
+    try {
+      await action();
+      onChange();
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const history = [...person.enrolment].sort((a, b) =>
+    b.skate_class.term.starts_on.localeCompare(a.skate_class.term.starts_on),
+  );
+
+  if (term.error) return <p className="error">{term.error}</p>;
+  if (!term.data) {
+    return term.loading ? null : (
+      <p className="muted">
+        No terms set up yet. <Link to="/skate-school">Add one on the Skate school page.</Link>
+      </p>
+    );
+  }
+  const { term: t, classes } = term.data;
+  const current = person.enrolment.find((e) => e.term_id === t.id);
+
+  return (
+    <>
+      <h3>Class</h3>
+      {error && <p className="error">{error}</p>}
+      <div className="inline-form">
+        <label>
+          {t.name}
+          <select
+            value={current?.class_id ?? ''}
+            disabled={busy}
+            onChange={(e) => {
+              const to = e.target.value;
+              void run(() =>
+                !to ? unenrol(person.id, t.id) : current ? moveEnrolment(person.id, t.id, to) : enrol(to, person.id),
+              );
+            }}
+          >
+            <option value="">Not enrolled</option>
+            {classes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {current && <Link to={`/skate-school/classes/${current.class_id}`}>Open class</Link>}
+      </div>
+      {history.filter((e) => e.term_id !== t.id).length > 0 && (
+        <p className="muted">
+          Earlier:{' '}
+          {history
+            .filter((e) => e.term_id !== t.id)
+            .map((e) => `${e.skate_class.term.name}: ${e.skate_class.name}`)
+            .join('; ')}
+        </p>
+      )}
+    </>
   );
 }
