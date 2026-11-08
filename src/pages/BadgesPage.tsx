@@ -15,7 +15,7 @@ export function BadgesPage() {
   const { data, error, reload } = useAsync(fetchBadgeCatalog, []);
   const [actionError, setActionError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
-  const canEdit = useAuth().hasRole('committee');
+  const canEdit = useAuth().hasRole('admin');
 
   async function run(action: () => Promise<unknown>) {
     setActionError(null);

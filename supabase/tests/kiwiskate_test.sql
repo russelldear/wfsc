@@ -4,7 +4,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 
-select plan(24);
+select plan(26);
 
 -- ---------------------------------------------------------------------------
 -- Reference data matches section 700 of the 2019 rules
@@ -37,9 +37,11 @@ select is(
 
 insert into auth.users (id, email) values
   ('11111111-1111-1111-1111-111111111111', 'committee@example.test'),
-  ('22222222-2222-2222-2222-222222222222', 'no-role@example.test');
+  ('22222222-2222-2222-2222-222222222222', 'no-role@example.test'),
+  ('33333333-3333-3333-3333-333333333333', 'admin@example.test');
 insert into public.user_role (user_id, role) values
-  ('11111111-1111-1111-1111-111111111111', 'committee');
+  ('11111111-1111-1111-1111-111111111111', 'committee'),
+  ('33333333-3333-3333-3333-333333333333', 'admin');
 insert into public.person (id, first_name, last_name) values
   ('cccccccc-0000-0000-0000-000000000001', 'Kiwi', 'Skater');
 
@@ -134,10 +136,32 @@ select lives_ok($$ select pg_temp.pass('Figure 1', '2027-01-01') $$,
 -- Editing reference data, and audit
 -- ---------------------------------------------------------------------------
 
-select lives_ok(
-  $$ update public.badge_skill set description = description || ' (edited)'
-     where id = (select min(id) from public.badge_skill) $$,
-  'committee can edit skill wording');
+-- Committee (not admin): the update matches no rows it may change.
+update public.badge_skill set description = description || ' (edited)'
+  where id = (select min(id) from public.badge_skill);
+select is(
+  (select count(*) from public.badge_skill where description like '% (edited)'),
+  0::bigint, 'committee without admin cannot edit skill wording');
+
+select throws_ok(
+  $$ insert into public.badge_skill (badge_id, kind, sort_order, description)
+     values ((select min(id) from public.badge), 'assessment', 99, 'Sneaky skill') $$,
+  '42501', null, 'committee without admin cannot add skills');
+
+reset role;
+select pg_temp.act_as('33333333-3333-3333-3333-333333333333');
+set local role authenticated;
+update public.badge_skill set description = description || ' (edited)'
+  where id = (select min(id) from public.badge_skill);
+reset role;
+select pg_temp.act_as('11111111-1111-1111-1111-111111111111');
+set local role authenticated;
+
+select ok(
+  exists (select 1 from public.audit_log
+          where table_name = 'badge_skill' and action = 'update'
+            and changed_by = '33333333-3333-3333-3333-333333333333'),
+  'admins can edit skill wording');
 
 select ok(
   exists (select 1 from public.audit_log

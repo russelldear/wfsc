@@ -64,20 +64,24 @@ function Gate() {
               <Route path="people/new" element={<PersonFormPage />} />
               <Route path="people/:id" element={<PersonPage />} />
               <Route path="people/:id/edit" element={<PersonFormPage />} />
-              <Route path="settings/member-types" element={<MemberTypesPage />} />
-              <Route path="import" element={<ImportPage />} />
             </>
           ) : (
             home && <Route index element={<Navigate to={home} replace />} />
           )}
           {skateSchool && (
             <>
-              <Route path="badges" element={<BadgesPage />} />
               <Route path="skate-school" element={<SkateSchoolPage />} />
               <Route path="skate-school/classes/:id" element={<ClassPage />} />
             </>
           )}
-          {admin && <Route path="access" element={<AccessPage />} />}
+          {admin && (
+            <>
+              <Route path="settings/member-types" element={<MemberTypesPage />} />
+              <Route path="badges" element={<BadgesPage />} />
+              <Route path="access" element={<AccessPage />} />
+            </>
+          )}
+          {admin && committee && <Route path="import" element={<ImportPage />} />}
           <Route path="*" element={<p>Page not found, or you don't have access to it.</p>} />
         </Route>
       </Routes>

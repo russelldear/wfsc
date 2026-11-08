@@ -17,12 +17,12 @@ export function Layout() {
   const { pathname } = useLocation();
   const [theme, setTheme] = useState<ThemeChoice>(getThemeChoice);
   const committee = hasRole('committee');
+  const admin = hasRole('admin');
   const skateSchool = committee || hasRole('coach');
 
-  const inMembers =
-    pathname === '/' || pathname.startsWith('/people') || pathname.startsWith('/import') || pathname.startsWith('/settings');
-  const inSkateSchool = pathname.startsWith('/skate-school') || pathname.startsWith('/badges');
-  const inAdmin = pathname.startsWith('/access');
+  const inMembers = pathname === '/' || pathname.startsWith('/people');
+  const inSkateSchool = pathname.startsWith('/skate-school');
+  const inAdmin = ['/access', '/import', '/settings', '/badges'].some((p) => pathname.startsWith(p));
 
   return (
     <>
@@ -41,25 +41,26 @@ export function Layout() {
                       Member list
                     </MenuLink>
                     <MenuLink to="/people/new">Add member</MenuLink>
-                    <MenuLink to="/import">Import</MenuLink>
-                    <MenuLink to="/settings/member-types">Member types</MenuLink>
                   </>
                 )}
               </Menu>
             )}
             {skateSchool && (
               <Menu label="Skate School" active={inSkateSchool}>
-                {() => (
-                  <>
-                    <MenuLink to="/skate-school">Terms and classes</MenuLink>
-                    <MenuLink to="/badges">Badges</MenuLink>
-                  </>
-                )}
+                {() => <MenuLink to="/skate-school">Terms and classes</MenuLink>}
               </Menu>
             )}
-            {hasRole('admin') && (
+            {admin && (
               <Menu label="Admin" active={inAdmin}>
-                {() => <MenuLink to="/access">Access</MenuLink>}
+                {() => (
+                  <>
+                    {/* Importing creates people, so it also needs the committee role. */}
+                    {committee && <MenuLink to="/import">Import</MenuLink>}
+                    <MenuLink to="/settings/member-types">Member types</MenuLink>
+                    <MenuLink to="/badges">Badges</MenuLink>
+                    <MenuLink to="/access">Access</MenuLink>
+                  </>
+                )}
               </Menu>
             )}
           </nav>

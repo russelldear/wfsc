@@ -4,7 +4,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 
-select plan(27);
+select plan(29);
 
 -- admin: also committee. committee: committee only. coach: coach only.
 insert into auth.users (id, email, email_confirmed_at) values
@@ -53,6 +53,8 @@ select throws_ok(
   'committee cannot make themselves admin');
 select is((select count(*) from public.user_role), 1::bigint,
   'committee without admin sees only their own roles');
+select throws_ok($$ insert into public.member_type (name) values ('Committee type') $$, '42501', null,
+  'committee without admin cannot add member types');
 
 reset role;
 
@@ -82,6 +84,8 @@ select ok(
 select throws_ok($$ select public.invite_user('not an email', 'coach') $$, 'P0001', null,
   'invalid email addresses are refused');
 
+select lives_ok($$ insert into public.member_type (name) values ('Admin type') $$,
+  'admins can add member types');
 select lives_ok($$ select public.grant_role('a0000000-0000-0000-0000-000000000002', 'admin') $$,
   'admin can make someone else an admin');
 select lives_ok($$ select public.revoke_role('a0000000-0000-0000-0000-000000000002', 'admin') $$,

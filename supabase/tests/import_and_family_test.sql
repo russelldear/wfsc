@@ -4,13 +4,16 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 
-select plan(17);
+select plan(18);
 
 insert into auth.users (id, email) values
   ('11111111-1111-1111-1111-111111111111', 'committee@example.test'),
-  ('22222222-2222-2222-2222-222222222222', 'no-role@example.test');
+  ('22222222-2222-2222-2222-222222222222', 'no-role@example.test'),
+  ('33333333-3333-3333-3333-333333333333', 'committee-only@example.test');
 insert into public.user_role (user_id, role) values
-  ('11111111-1111-1111-1111-111111111111', 'committee');
+  ('11111111-1111-1111-1111-111111111111', 'committee'),
+  ('11111111-1111-1111-1111-111111111111', 'admin'),
+  ('33333333-3333-3333-3333-333333333333', 'committee');
 insert into public.member_type (name) values ('Test type') on conflict (name) do nothing;
 
 create function pg_temp.act_as(p_user uuid) returns void language sql as $$
@@ -31,6 +34,14 @@ select throws_ok(
 select throws_ok(
   $$ select public.next_membership_number() $$,
   '42501', null, 'membership numbers are only assigned by the database');
+
+reset role;
+select pg_temp.act_as('33333333-3333-3333-3333-333333333333');
+set local role authenticated;
+
+select throws_ok(
+  $$ select public.import_members('[{"line":2,"person":{"first_name":"A","last_name":"B"}}]') $$,
+  '42501', 'Only an admin can import members', 'committee without admin cannot import');
 
 reset role;
 select pg_temp.act_as('11111111-1111-1111-1111-111111111111');

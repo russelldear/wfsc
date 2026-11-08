@@ -146,7 +146,7 @@ where email = 'your.address@example.com';
 
 ## Importing existing members
 
-**Import** (top menu) reads a CSV downloaded from the club's Google Sheet
+**Admin → Import** (admins who are also committee) reads a CSV downloaded from the club's Google Sheet
 (File → Download → Comma-separated values). The file is read in the browser
 and sent straight to Supabase. The page shows how every row will be read,
 flags problems, and offers to create any member types the file uses that don't
@@ -179,7 +179,7 @@ counter after the highest in use, e.g. `26/107`.
 
 The badges and skills come from section 700 of the 2019 NZIFSA Rules and
 Regulations (the current edition), loaded by a migration. The committee can
-edit them on the **Badges** page.
+edit them on the **Admin → Badges** page (admins only).
 
 - Each badge has a **"must already have"** badge. A pass can only be recorded
   once that badge is passed, on or before the same day; the database enforces
@@ -222,9 +222,13 @@ session date at the top of the grid.
 
 | Role | Can |
 |---|---|
-| Committee | Everything: members, memberships, skate school, import and export. |
-| Coach | View only: skate school classes, skater names and ages, badges and progress. |
-| Admin | Manage access on the **Access** page. Add Committee too to see members. |
+| Committee | Members, memberships, skate school, recording progress, CSV export. |
+| Coach | View only: skate school classes, skater names and ages, and progress. |
+| Admin | The **Admin** menu: Import, Member types, Badges and Access. Import also needs Committee, since it creates people. |
+
+Editing member types and badges, and importing, are admin-only in the
+database as well as in the menus. The committee can still read member types
+and badges, which the membership and progress screens need.
 
 - **Granting access:** an admin enters a Google email and a role. If that
   person has already signed in, they get the role at once; otherwise it is
