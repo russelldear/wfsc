@@ -2,6 +2,8 @@ import type { PostgrestError } from '@supabase/supabase-js';
 import type { ImportPayload } from './importMembers';
 import { supabase } from './supabase';
 import type {
+  AppRole,
+  AppUser,
   Badge,
   BadgeCatalog,
   BadgePass,
@@ -16,6 +18,7 @@ import type {
   MembershipKind,
   PersonDetail,
   PersonFields,
+  RoleInvite,
   SkaterProgress,
   SkateClass,
   SkateClassFields,
@@ -393,20 +396,20 @@ export async function getClass(id: string): Promise<ClassDetail> {
   const row = check(
     await supabase
       .from('skate_class')
-      .select(
-        '*, skate_class_badge(badge_id), enrolment(count), term(*), ' +
-          'skaters:enrolment(person(id, first_name, last_name, membership_number, date_of_birth))',
-      )
+      .select('*, skate_class_badge(badge_id), enrolment(count), term(*)')
       .eq('id', id)
       .single(),
-  ) as unknown as ClassRow & { term: Term; skaters: { person: ClassSkater }[] };
-  return {
-    ...toSkateClass(row),
-    term: row.term,
-    skaters: row.skaters
-      .map((s) => s.person)
-      .sort((a, b) => a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name)),
-  };
+  ) as unknown as ClassRow & { term: Term };
+  const skaters = await termSkaters(row.term_id);
+  return { ...toSkateClass(row), term: row.term, skaters: skaters.filter((s) => s.class_id === id) };
+}
+
+/** Skaters enrolled in a term: names and ages (works for coaches too). */
+export async function termSkaters(termId: string): Promise<ClassSkater[]> {
+  const rows = check(await supabase.rpc('term_skaters', { p_term_id: termId })) as (Omit<ClassSkater, 'id'> & {
+    person_id: string;
+  })[];
+  return rows.map(({ person_id, ...rest }) => ({ id: person_id, ...rest }));
 }
 
 export async function saveClass(
@@ -477,4 +480,32 @@ export async function moveEnrolment(personId: string, termId: string, toClassId:
 
 export async function unenrol(personId: string, termId: string) {
   check(await supabase.from('enrolment').delete().eq('person_id', personId).eq('term_id', termId));
+}
+
+// ---------------------------------------------------------------------------
+// Access management (admins)
+// ---------------------------------------------------------------------------
+
+export async function listAppUsers(): Promise<AppUser[]> {
+  return check(await supabase.rpc('list_app_users')) as AppUser[];
+}
+
+export async function listInvites(): Promise<RoleInvite[]> {
+  return check(await supabase.from('role_invite').select('email, role, invited_at').order('email')) as RoleInvite[];
+}
+
+export async function inviteUser(email: string, role: AppRole): Promise<'granted' | 'invited'> {
+  return check(await supabase.rpc('invite_user', { p_email: email, p_role: role })) as 'granted' | 'invited';
+}
+
+export async function cancelInvite(email: string, role: AppRole) {
+  check(await supabase.from('role_invite').delete().eq('email', email).eq('role', role));
+}
+
+export async function grantRole(userId: string, role: AppRole) {
+  check(await supabase.rpc('grant_role', { p_user_id: userId, p_role: role }));
+}
+
+export async function revokeRole(userId: string, role: AppRole) {
+  check(await supabase.rpc('revoke_role', { p_user_id: userId, p_role: role }));
 }

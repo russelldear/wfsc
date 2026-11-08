@@ -17,7 +17,7 @@ import {
   updateSkillAchievement,
 } from '../lib/api';
 import { badgeStatuses, badgesInFocus, orderedBadges, overAgeLimit, type BadgeStatus } from '../lib/badges';
-import { formatDate, nzToday } from '../lib/dates';
+import { ageOn, formatDate, nzToday } from '../lib/dates';
 import type { AssessorType, BadgeCatalog, PersonDetail, SkillAchievement } from '../lib/types';
 
 interface Props {
@@ -76,7 +76,7 @@ export function SkateSchoolPanel({ person, catalog, onPersonChange }: Props) {
   const passed = orderedBadges(catalog).filter((b) => statuses.get(b.id)!.pass);
   const shown = showAll
     ? orderedBadges(catalog).filter((b) => !statuses.get(b.id)!.pass)
-    : badgesInFocus(catalog, statuses, person.date_of_birth, today);
+    : badgesInFocus(catalog, statuses, person.date_of_birth ? ageOn(person.date_of_birth, today) : null);
 
   return (
     <section className="panel skate-school">

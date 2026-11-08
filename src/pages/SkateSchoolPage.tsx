@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
+import { useAuth } from '../auth/AuthProvider';
 import { useAsync } from '../components/useAsync';
 import {
   copyClasses,
@@ -10,10 +11,9 @@ import {
   getCurrentTermId,
   getProgressForPeople,
   listClasses,
-  listEnrolments,
-  listMembers,
   listTerms,
   saveClass,
+  termSkaters,
   updateTerm,
 } from '../lib/api';
 import { badgeStatuses, orderedBadges } from '../lib/badges';
@@ -31,6 +31,7 @@ export function SkateSchoolPage() {
   const [chosenTermId, setChosenTermId] = useState<string | null>(null);
   const [showNewTerm, setShowNewTerm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const canEdit = useAuth().hasRole('committee');
 
   if (terms.error || catalog.error) return <p className="error">{terms.error ?? catalog.error}</p>;
   if (!terms.data || !catalog.data) return <p>Loading…</p>;
@@ -58,9 +59,11 @@ export function SkateSchoolPage() {
               </select>
             </label>
           )}
-          <button type="button" onClick={() => setShowNewTerm((s) => !s)}>
-            New term
-          </button>
+          {canEdit && (
+            <button type="button" onClick={() => setShowNewTerm((s) => !s)}>
+              New term
+            </button>
+          )}
         </div>
       </div>
       {error && <p className="error">{error}</p>}
@@ -78,7 +81,9 @@ export function SkateSchoolPage() {
         />
       )}
 
-      {!term && !showNewTerm && <p className="muted">No terms yet. Add the current term to get started.</p>}
+      {!term && !showNewTerm && (
+        <p className="muted">{canEdit ? 'No terms yet. Add the current term to get started.' : 'No terms yet.'}</p>
+      )}
 
       {term && (
         <TermView
@@ -86,6 +91,7 @@ export function SkateSchoolPage() {
           term={term}
           isCurrent={term.id === currentId}
           catalog={catalog.data}
+          canEdit={canEdit}
           onTermChanged={terms.reload}
           onTermDeleted={() => {
             setChosenTermId(null);
@@ -163,10 +169,11 @@ function TermView(props: {
   term: Term;
   isCurrent: boolean;
   catalog: BadgeCatalog;
+  canEdit: boolean;
   onTermChanged: () => void;
   onTermDeleted: () => void;
 }) {
-  const { term, catalog } = props;
+  const { term, catalog, canEdit } = props;
   const classes = useAsync(() => listClasses(term.id), [term.id]);
   const ready = useAsync(() => readyToTest(term.id, catalog), [term.id]);
   const [showNewClass, setShowNewClass] = useState(false);
@@ -200,9 +207,11 @@ function TermView(props: {
             <span className="muted">
               {formatDate(term.starts_on)} – {formatDate(term.ends_on)}
             </span>
-            <button type="button" className="link-button" onClick={() => setEditingTerm((s) => !s)}>
-              Edit term
-            </button>
+            {canEdit && (
+              <button type="button" className="link-button" onClick={() => setEditingTerm((s) => !s)}>
+                Edit term
+              </button>
+            )}
           </div>
         </div>
         {error && <p className="error">{error}</p>}
@@ -258,9 +267,11 @@ function TermView(props: {
 
         <div className="panel-title">
           <h3>Classes</h3>
-          <button type="button" onClick={() => setShowNewClass((s) => !s)}>
-            New class
-          </button>
+          {canEdit && (
+            <button type="button" onClick={() => setShowNewClass((s) => !s)}>
+              New class
+            </button>
+          )}
         </div>
 
         {showNewClass && (
@@ -333,7 +344,8 @@ function TermView(props: {
           <ul className="ready-list">
             {ready.data.map((r) => (
               <li key={r.personId}>
-                <Link to={`/people/${r.personId}`}>{r.name}</Link>: {r.badges.join(', ')}
+                {canEdit ? <Link to={`/people/${r.personId}`}>{r.name}</Link> : r.name}
+                {r.className && <span className="muted"> ({r.className})</span>}: {r.badges.join(', ')}
               </li>
             ))}
           </ul>
@@ -344,16 +356,15 @@ function TermView(props: {
 }
 
 async function readyToTest(termId: string, catalog: BadgeCatalog) {
-  const enrolments = await listEnrolments(termId);
-  const personIds = enrolments.map((e) => e.person_id);
-  const [progress, people] = await Promise.all([getProgressForPeople(personIds), listMembers()]);
-  const nameById = new Map(people.map((p) => [p.id, `${p.first_name} ${p.last_name}`]));
+  const [skaters, classes] = await Promise.all([termSkaters(termId), listClasses(termId)]);
+  const className = new Map(classes.map((c) => [c.id, c.name]));
+  const progress = await getProgressForPeople(skaters.map((s) => s.id));
   const ordered = orderedBadges(catalog);
-  return personIds
-    .map((personId) => {
-      const statuses = badgeStatuses(catalog, progress.get(personId)!);
+  return skaters
+    .map((s) => {
+      const statuses = badgeStatuses(catalog, progress.get(s.id)!);
       const badges = ordered.filter((b) => statuses.get(b.id)!.readyToTest).map((b) => b.name);
-      return { personId, name: nameById.get(personId) ?? 'Unknown', badges };
+      return { personId: s.id, name: `${s.first_name} ${s.last_name}`, className: className.get(s.class_id), badges };
     })
     .filter((r) => r.badges.length > 0)
     .sort((a, b) => a.name.localeCompare(b.name));

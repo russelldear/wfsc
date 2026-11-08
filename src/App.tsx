@@ -1,6 +1,7 @@
-import { HashRouter, Route, Routes } from 'react-router';
+import { HashRouter, Navigate, Route, Routes } from 'react-router';
 import { AuthProvider, useAuth } from './auth/AuthProvider';
 import { CenteredCard, Layout } from './components/Layout';
+import { AccessPage } from './pages/AccessPage';
 import { BadgesPage } from './pages/BadgesPage';
 import { ClassPage } from './pages/ClassPage';
 import { ImportPage } from './pages/ImportPage';
@@ -11,7 +12,7 @@ import { PersonPage } from './pages/PersonPage';
 import { SkateSchoolPage } from './pages/SkateSchoolPage';
 
 function Gate() {
-  const { status, session, error, signIn, signOut } = useAuth();
+  const { status, session, error, signIn, signOut, hasRole } = useAuth();
 
   if (status === 'loading') {
     return <CenteredCard>Loading…</CenteredCard>;
@@ -46,20 +47,38 @@ function Gate() {
     );
   }
 
+  const committee = hasRole('committee');
+  const skateSchool = committee || hasRole('coach');
+  const admin = hasRole('admin');
+  // Where to land: the member list for the committee, otherwise the first
+  // page this person can use.
+  const home = committee ? null : skateSchool ? '/skate-school' : admin ? '/access' : null;
+
   return (
     <HashRouter>
       <Routes>
         <Route element={<Layout />}>
-          <Route index element={<MemberListPage />} />
-          <Route path="people/new" element={<PersonFormPage />} />
-          <Route path="people/:id" element={<PersonPage />} />
-          <Route path="people/:id/edit" element={<PersonFormPage />} />
-          <Route path="settings/member-types" element={<MemberTypesPage />} />
-          <Route path="import" element={<ImportPage />} />
-          <Route path="badges" element={<BadgesPage />} />
-          <Route path="skate-school" element={<SkateSchoolPage />} />
-          <Route path="skate-school/classes/:id" element={<ClassPage />} />
-          <Route path="*" element={<p>Page not found.</p>} />
+          {committee ? (
+            <>
+              <Route index element={<MemberListPage />} />
+              <Route path="people/new" element={<PersonFormPage />} />
+              <Route path="people/:id" element={<PersonPage />} />
+              <Route path="people/:id/edit" element={<PersonFormPage />} />
+              <Route path="settings/member-types" element={<MemberTypesPage />} />
+              <Route path="import" element={<ImportPage />} />
+            </>
+          ) : (
+            home && <Route index element={<Navigate to={home} replace />} />
+          )}
+          {skateSchool && (
+            <>
+              <Route path="badges" element={<BadgesPage />} />
+              <Route path="skate-school" element={<SkateSchoolPage />} />
+              <Route path="skate-school/classes/:id" element={<ClassPage />} />
+            </>
+          )}
+          {admin && <Route path="access" element={<AccessPage />} />}
+          <Route path="*" element={<p>Page not found, or you don't have access to it.</p>} />
         </Route>
       </Routes>
     </HashRouter>

@@ -65,20 +65,20 @@ describe('overAgeLimit', () => {
 });
 
 describe('badgesInFocus', () => {
-  const names = (dob: string | null, p: SkaterProgress) =>
-    badgesInFocus(catalog, badgeStatuses(catalog, p), dob, '2027-06-01').map((b) => b.name);
+  const names = (age: number | null, p: SkaterProgress) =>
+    badgesInFocus(catalog, badgeStatuses(catalog, p), age).map((b) => b.name);
 
   it('suggests Tiny Tots for young or unknown-age skaters', () => {
-    expect(names('2023-01-01', progress([], []))).toEqual(['Tiny Tots 1']);
+    expect(names(4, progress([], []))).toEqual(['Tiny Tots 1']);
     expect(names(null, progress([], []))).toEqual(['Tiny Tots 1']);
   });
 
   it('skips Tiny Tots for older skaters', () => {
-    expect(names('2015-01-01', progress([], []))).toEqual(['Beginner']);
+    expect(names(12, progress([], []))).toEqual(['Beginner']);
   });
 
   it('moves on after a pass, and includes other badges with ticks', () => {
-    expect(names('2015-01-01', progress([6], [11]))).toEqual(['Elementary', 'Dance 1']);
+    expect(names(12, progress([6], [11]))).toEqual(['Elementary', 'Dance 1']);
   });
 
   it('stops suggesting Tiny Tots once a later General badge is passed', () => {

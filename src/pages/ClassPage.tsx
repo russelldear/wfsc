@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
+import { useAuth } from '../auth/AuthProvider';
 import { useAsync } from '../components/useAsync';
 import {
   deleteClass,
@@ -18,7 +19,7 @@ import {
   untickSkill,
 } from '../lib/api';
 import { badgeStatuses, badgesInFocus, orderedBadges, type BadgeStatus } from '../lib/badges';
-import { ageRangeLabel, outsideAgeRange, timeRange } from '../lib/classes';
+import { ageOutside, ageRangeLabel, outsideAgeRange, timeRange } from '../lib/classes';
 import { ageOn, nzToday } from '../lib/dates';
 import type { BadgeCatalog, ClassDetail, ClassSkater, SkaterProgress } from '../lib/types';
 import { ClassForm } from './ClassForm';
@@ -31,6 +32,7 @@ export function ClassPage() {
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const canEdit = useAuth().hasRole('committee');
 
   async function run(action: () => Promise<unknown>, after?: () => void) {
     setBusy(true);
@@ -59,11 +61,13 @@ export function ClassPage() {
       </p>
       <div className="page-title">
         <h1>{c.name}</h1>
-        <div className="actions">
-          <button type="button" onClick={() => setEditing((s) => !s)}>
-            Edit class
-          </button>
-        </div>
+        {canEdit && (
+          <div className="actions">
+            <button type="button" onClick={() => setEditing((s) => !s)}>
+              Edit class
+            </button>
+          </div>
+        )}
       </div>
       <p>
         {[timeRange(c.starts_at, c.ends_at), ageRangeLabel(c.min_age, c.max_age), c.coach_name && `Coach: ${c.coach_name}`]
@@ -73,7 +77,7 @@ export function ClassPage() {
       <p className="muted">Badges: {covered.map((b) => b.name).join(', ') || 'none set'}</p>
       {error && <p className="error">{error}</p>}
 
-      {editing && (
+      {canEdit && editing && (
         <>
           <ClassForm
             catalog={cat}
@@ -100,15 +104,22 @@ export function ClassPage() {
         </>
       )}
 
-      <Roster klass={c} busy={busy} run={run} />
-      <Progress klass={c} catalog={cat} />
+      <Roster klass={c} busy={busy} run={run} canEdit={canEdit} />
+      <Progress klass={c} catalog={cat} canEdit={canEdit} />
     </>
   );
 }
 
-function Roster(props: { klass: ClassDetail; busy: boolean; run: (a: () => Promise<unknown>) => Promise<void> }) {
-  const { klass: c, busy, run } = props;
+function Roster(props: {
+  klass: ClassDetail;
+  busy: boolean;
+  run: (a: () => Promise<unknown>) => Promise<void>;
+  canEdit: boolean;
+}) {
+  const { klass: c, busy, run, canEdit } = props;
   const others = useAsync(async () => {
+    // Enrolling needs the member list, which only the committee can see.
+    if (!canEdit) return null;
     const [classes, enrolments, people] = await Promise.all([
       listClasses(c.term_id),
       listEnrolments(c.term_id),
@@ -119,7 +130,7 @@ function Roster(props: { klass: ClassDetail; busy: boolean; run: (a: () => Promi
       classes: classes.filter((x) => x.id !== c.id),
       available: people.filter((p) => !enrolledThisTerm.has(p.id)),
     };
-  }, [c.id, c.skaters.length]);
+  }, [c.id, c.skaters.length, canEdit]);
   const [personId, setPersonId] = useState('');
   const chosen = others.data?.available.find((p) => p.id === personId);
   const ageWarning = chosen && outsideAgeRange(chosen.date_of_birth, c.term.starts_on, c.min_age, c.max_age);
@@ -134,13 +145,20 @@ function Roster(props: { klass: ClassDetail; busy: boolean; run: (a: () => Promi
         <ul className="roster">
           {c.skaters.map((s) => (
             <li key={s.id}>
-              <Link to={`/people/${s.id}`}>
-                {s.first_name} {s.last_name}
-              </Link>
-              {s.date_of_birth && <span className="muted"> · age {ageOn(s.date_of_birth, nzToday())}</span>}
-              {outsideAgeRange(s.date_of_birth, c.term.starts_on, c.min_age, c.max_age) && (
+              {canEdit ? (
+                <Link to={`/people/${s.id}`}>
+                  {s.first_name} {s.last_name}
+                </Link>
+              ) : (
+                <span>
+                  {s.first_name} {s.last_name}
+                </span>
+              )}
+              {s.age != null && <span className="muted"> · age {s.age}</span>}
+              {ageOutside(s.age_at_term_start, c.min_age, c.max_age) && (
                 <span className="badge lapsed">Outside age range</span>
               )}
+              {canEdit && (
               <span className="roster-actions">
                 {others.data && others.data.classes.length > 0 && (
                   <select
@@ -172,11 +190,13 @@ function Roster(props: { klass: ClassDetail; busy: boolean; run: (a: () => Promi
                   Remove
                 </button>
               </span>
+              )}
             </li>
           ))}
         </ul>
       )}
 
+      {canEdit && (
       <form
         className="inline-form"
         onSubmit={(e) => {
@@ -204,6 +224,7 @@ function Roster(props: { klass: ClassDetail; busy: boolean; run: (a: () => Promi
           <Link to="/people/new">Add them as a person</Link> first (untick "Start a membership" if they're not a member).
         </span>
       </form>
+      )}
       {ageWarning && (
         <p className="warning">
           {chosen.first_name} is {ageOn(chosen.date_of_birth!, c.term.starts_on)} at the start of term, outside this
@@ -214,7 +235,7 @@ function Roster(props: { klass: ClassDetail; busy: boolean; run: (a: () => Promi
   );
 }
 
-function Progress({ klass: c, catalog }: { klass: ClassDetail; catalog: BadgeCatalog }) {
+function Progress({ klass: c, catalog, canEdit }: { klass: ClassDetail; catalog: BadgeCatalog; canEdit: boolean }) {
   const ids = c.skaters.map((s) => s.id);
   const progress = useAsync(() => getProgressForPeople(ids), [ids.join(',')]);
   const [tickDate, setTickDate] = useState(nzToday());
@@ -250,14 +271,16 @@ function Progress({ klass: c, catalog }: { klass: ClassDetail; catalog: BadgeCat
     <section className="panel">
       <div className="panel-title">
         <h2>Progress</h2>
-        <label className="inline-label">
-          Session date for new ticks{' '}
-          <input type="date" value={tickDate} max={nzToday()} onChange={(e) => setTickDate(e.target.value)} />
-        </label>
+        {canEdit && (
+          <label className="inline-label">
+            Session date for new ticks{' '}
+            <input type="date" value={tickDate} max={nzToday()} onChange={(e) => setTickDate(e.target.value)} />
+          </label>
+        )}
       </div>
       {error && <p className="error">{error}</p>}
       {covered.length === 0 ? (
-        <FocusList skaters={c.skaters} catalog={catalog} progress={progress.data} />
+        <FocusList skaters={c.skaters} catalog={catalog} progress={progress.data} canEdit={canEdit} />
       ) : (
         <Grid
           skaters={c.skaters}
@@ -267,6 +290,7 @@ function Progress({ klass: c, catalog }: { klass: ClassDetail; catalog: BadgeCat
           progress={progress.data}
           optimistic={optimistic}
           onToggle={(p, s, v) => void toggle(p, s, v)}
+          canEdit={canEdit}
         />
       )}
     </section>
@@ -281,6 +305,7 @@ function Grid(props: {
   progress: Map<string, SkaterProgress>;
   optimistic: Record<string, boolean>;
   onToggle: (personId: string, skillId: number, checked: boolean) => void;
+  canEdit: boolean;
 }) {
   const statusesByPerson = new Map(props.skaters.map((s) => [s.id, props.statusesFor(s.id)]));
   const first = statusesByPerson.values().next().value!;
@@ -289,8 +314,9 @@ function Grid(props: {
   return (
     <>
       <p className="hint">
-        Tick skills seen in the session; they save straight away. Green ✓ cells are badges the skater has already
-        passed. Hover over a number to see the skill, or read the key below.
+        {props.canEdit ? 'Tick skills seen in the session; they save straight away. ' : 'View only. '}
+        Green ✓ cells are badges the skater has already passed. Hover over a number to see the skill, or read the key
+        below.
       </p>
       <div className="table-wrap">
         <table className="grid-table">
@@ -325,9 +351,13 @@ function Grid(props: {
               return (
                 <tr key={skater.id}>
                   <th scope="row" className="skater-name">
-                    <Link to={`/people/${skater.id}`}>
-                      {skater.first_name} {skater.last_name}
-                    </Link>
+                    {props.canEdit ? (
+                      <Link to={`/people/${skater.id}`}>
+                        {skater.first_name} {skater.last_name}
+                      </Link>
+                    ) : (
+                      `${skater.first_name} ${skater.last_name}`
+                    )}
                   </th>
                   {props.covered.flatMap((badgeId) => {
                     const st = statuses.get(badgeId)!;
@@ -343,6 +373,7 @@ function Grid(props: {
                               type="checkbox"
                               aria-label={`${skater.first_name} ${skater.last_name}: ${st.badge.name} skill ${i + 1}, ${skill.description}`}
                               checked={checked}
+                              disabled={!props.canEdit}
                               onChange={(e) => props.onToggle(skater.id, skill.id, e.target.checked)}
                             />
                           )}
@@ -370,29 +401,39 @@ function Grid(props: {
           </div>
         ))}
       </div>
-      <p className="hint">To record a pass, open the skater's page.</p>
+      {props.canEdit && <p className="hint">To record a pass, open the skater's page.</p>}
     </>
   );
 }
 
 /** For classes without set badges (e.g. Invitational): each skater's own current badges. */
-function FocusList(props: { skaters: ClassSkater[]; catalog: BadgeCatalog; progress: Map<string, SkaterProgress> }) {
-  const today = nzToday();
+function FocusList(props: {
+  skaters: ClassSkater[];
+  catalog: BadgeCatalog;
+  progress: Map<string, SkaterProgress>;
+  canEdit: boolean;
+}) {
   return (
     <>
       <p className="hint">
-        This class has no badges set, so each skater's current badges are listed. Open a skater to tick skills, or edit
-        the class to choose its badges.
+        This class has no badges set, so each skater's current badges are listed.
+        {props.canEdit && ' Open a skater to tick skills, or edit the class to choose its badges.'}
       </p>
       <ul className="roster">
         {props.skaters.map((s) => {
           const statuses = badgeStatuses(props.catalog, props.progress.get(s.id)!);
-          const focus = badgesInFocus(props.catalog, statuses, s.date_of_birth, today);
+          const focus = badgesInFocus(props.catalog, statuses, s.age);
           return (
             <li key={s.id}>
-              <Link to={`/people/${s.id}`}>
-                {s.first_name} {s.last_name}
-              </Link>
+              {props.canEdit ? (
+                <Link to={`/people/${s.id}`}>
+                  {s.first_name} {s.last_name}
+                </Link>
+              ) : (
+                <span>
+                  {s.first_name} {s.last_name}
+                </span>
+              )}
               :{' '}
               {focus.length === 0
                 ? 'nothing in progress'

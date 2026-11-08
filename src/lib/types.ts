@@ -208,13 +208,33 @@ export interface SkateClass extends SkateClassFields {
 
 export interface ClassSkater {
   id: string;
+  class_id: string;
   first_name: string;
   last_name: string;
+  /** Only returned to the committee. */
   membership_number: string | null;
-  date_of_birth: string | null;
+  age: number | null;
+  age_at_term_start: number | null;
 }
 
 export interface ClassDetail extends SkateClass {
   term: Term;
   skaters: ClassSkater[];
+}
+
+// Access (stage 4)
+
+export type AppRole = 'committee' | 'coach' | 'admin';
+
+export interface AppUser {
+  user_id: string;
+  email: string;
+  last_sign_in_at: string | null;
+  roles: AppRole[];
+}
+
+export interface RoleInvite {
+  email: string;
+  role: AppRole;
+  invited_at: string;
 }

@@ -4,7 +4,8 @@ import { useAuth } from '../auth/AuthProvider';
 const envLabel = import.meta.env.VITE_ENV_LABEL as string | undefined;
 
 export function Layout() {
-  const { session, signOut } = useAuth();
+  const { session, signOut, hasRole } = useAuth();
+  const committee = hasRole('committee');
   return (
     <>
       {envLabel && <div className="env-banner">{envLabel}: test data only</div>}
@@ -12,12 +13,25 @@ export function Layout() {
         <div className="site-header-inner">
           <span className="brand">WFSC Members</span>
           <nav aria-label="Main">
-            <NavLink to="/" end>Members</NavLink>
-            <NavLink to="/people/new">Add member</NavLink>
-            <NavLink to="/skate-school">Skate school</NavLink>
-            <NavLink to="/badges">Badges</NavLink>
-            <NavLink to="/settings/member-types">Member types</NavLink>
-            <NavLink to="/import">Import</NavLink>
+            {committee && (
+              <>
+                <NavLink to="/" end>Members</NavLink>
+                <NavLink to="/people/new">Add member</NavLink>
+              </>
+            )}
+            {(committee || hasRole('coach')) && (
+              <>
+                <NavLink to="/skate-school">Skate school</NavLink>
+                <NavLink to="/badges">Badges</NavLink>
+              </>
+            )}
+            {committee && (
+              <>
+                <NavLink to="/settings/member-types">Member types</NavLink>
+                <NavLink to="/import">Import</NavLink>
+              </>
+            )}
+            {hasRole('admin') && <NavLink to="/access">Access</NavLink>}
           </nav>
           <span className="user">
             <span className="user-email">{session?.user.email}</span>

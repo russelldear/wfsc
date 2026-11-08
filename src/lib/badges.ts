@@ -60,8 +60,8 @@ export function overAgeLimit(badge: Badge, dateOfBirth: string | null, onDate: s
 export function badgesInFocus(
   catalog: BadgeCatalog,
   statuses: Map<number, BadgeStatus>,
-  dateOfBirth: string | null,
-  today: string,
+  /** The skater's age today, if known. */
+  age: number | null,
 ): Badge[] {
   const ordered = orderedBadges(catalog);
   const inProgress = ordered.filter((b) => {
@@ -73,7 +73,8 @@ export function badgesInFocus(
   const nextGeneral = ordered.find((b) => {
     const s = statuses.get(b.id)!;
     return (
-      b.stream_id === general?.id && !s.pass && s.prerequisiteMet && !overAgeLimit(b, dateOfBirth, today) &&
+      b.stream_id === general?.id && !s.pass && s.prerequisiteMet &&
+      !(b.max_age != null && age != null && age > b.max_age) &&
       // Once past Tiny Tots, don't suggest them.
       !(b.max_age != null && hasPassedLaterInStream(catalog, statuses, b))
     );

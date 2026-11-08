@@ -21,8 +21,8 @@ Supabase (Postgres + Auth)
   The Supabase URL and anon/publishable key in the built site are public by
   design. **Security comes from the row level security policies** in
   `supabase/migrations`, and `supabase/tests` checks them.
-- Signing in grants nothing. A user sees data only after an administrator
-  gives them the `committee` role (see "First administrator" below).
+- Signing in grants nothing. A user sees data only once an admin gives them
+  a role on the **Access** page.
 - Every change to people, contacts and memberships is written to `audit_log`
   by database triggers, with who made it.
 
@@ -42,7 +42,8 @@ Supabase (Postgres + Auth)
 | `badge_pass` | Badges a skater has passed, with date and assessor. |
 | `term`, `skate_class`, `skate_class_badge` | Skate school terms, their classes, and the badges each class covers. |
 | `enrolment` | Which class a skater is in for a term (at most one per term). |
-| `user_role` | Who can use the app. |
+| `user_role` | Who can use the app, and as what (committee, coach, admin). |
+| `role_invite` | Roles waiting for someone to sign in with an invited email. |
 | `audit_log` | Change history. |
 
 Membership status is not stored: a person is current if their latest
@@ -131,13 +132,16 @@ these two projects.
    - Staging: Site URL `https://guid.nz/wfsc/staging/`, and add
      `http://localhost:5173/` to the redirect URLs for local development.
 
-### First administrator
+### First administrator (new projects only)
 
-Sign in once on the site, then in that project's Supabase SQL editor run:
+Normally an admin grants access on the **Access** page. A brand-new project
+has no admin, so: sign in once on the site, then in that project's Supabase
+SQL editor run:
 
 ```sql
 insert into public.user_role (user_id, role)
-select id, 'committee' from auth.users where email = 'your.address@example.com';
+select id, r::public.app_role from auth.users, unnest(array['committee', 'admin']) r
+where email = 'your.address@example.com';
 ```
 
 ## Importing existing members
@@ -213,6 +217,26 @@ session date at the top of the grid.
   the one just finished. "In skate school" on the member list and the CSV
   export's Skater column mean "enrolled in a class in the current term".
 - **New term** can copy the previous term's classes (without skaters).
+
+## Access and roles
+
+| Role | Can |
+|---|---|
+| Committee | Everything: members, memberships, skate school, import and export. |
+| Coach | View only: skate school classes, skater names and ages, badges and progress. |
+| Admin | Manage access on the **Access** page. Add Committee too to see members. |
+
+- **Inviting:** an admin enters a Google email and a role. If that person has
+  already signed in, they get the role at once; otherwise it applies the first
+  time they sign in. Invitations only apply once the account's email is
+  confirmed (Google sign-ins arrive confirmed), so nobody can claim one by
+  signing up with someone else's address.
+- There must always be at least one admin. Role changes go through database
+  functions that check the caller is an admin, and are audited.
+- **Coaches never read the `person` table.** Row level security works on
+  whole rows, so coaches get skater names and ages (computed from the date of
+  birth, which is not returned) from the `term_skaters` function, and can
+  read progress only for skaters enrolled in a class.
 
 ## Backups
 

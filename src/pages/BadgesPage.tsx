@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAuth } from '../auth/AuthProvider';
 import { useAsync } from '../components/useAsync';
 import {
   addBadgeSkill,
@@ -14,6 +15,7 @@ export function BadgesPage() {
   const { data, error, reload } = useAsync(fetchBadgeCatalog, []);
   const [actionError, setActionError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+  const canEdit = useAuth().hasRole('committee');
 
   async function run(action: () => Promise<unknown>) {
     setActionError(null);
@@ -29,10 +31,12 @@ export function BadgesPage() {
     <>
       <div className="page-title">
         <h1>Kiwiskate badges</h1>
-        <label className="checkbox">
-          <input type="checkbox" checked={editing} onChange={(e) => setEditing(e.target.checked)} />
-          Edit
-        </label>
+        {canEdit && (
+          <label className="checkbox">
+            <input type="checkbox" checked={editing} onChange={(e) => setEditing(e.target.checked)} />
+            Edit
+          </label>
+        )}
       </div>
       <p className="hint">
         From section 700 of the 2019 NZIFSA Rules and Regulations. Tests may be judged by a NZIFSA Judge or a Level 1

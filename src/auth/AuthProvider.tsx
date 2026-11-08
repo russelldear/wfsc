@@ -1,12 +1,15 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
+import type { AppRole } from '../lib/types';
 
-type Status = 'loading' | 'signed-out' | 'no-access' | 'committee' | 'error';
+type Status = 'loading' | 'signed-out' | 'no-access' | 'ready' | 'error';
 
 interface AuthState {
   status: Status;
   session: Session | null;
+  roles: AppRole[];
+  hasRole: (role: AppRole) => boolean;
   error: string | null;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -29,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [sessionLoaded, setSessionLoaded] = useState(false);
   const [roleStatus, setRoleStatus] = useState<Status>('loading');
+  const [roles, setRoles] = useState<AppRole[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -59,7 +63,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setError(e.message);
           setRoleStatus('error');
         } else {
-          setRoleStatus(data.some((r) => r.role === 'committee') ? 'committee' : 'no-access');
+          const mine = data.map((r) => r.role as AppRole);
+          setRoles(mine);
+          // Admin alone gives the Access page; committee or coach give data.
+          setRoleStatus(mine.length > 0 ? 'ready' : 'no-access');
         }
       });
     return () => {
@@ -75,6 +82,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthState = {
     status,
     session,
+    roles,
+    hasRole: (role) => roles.includes(role),
     error,
     signIn: async () => {
       setError(null);
@@ -87,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signOut: async () => {
       await supabase.auth.signOut();
       setRoleStatus('loading');
+      setRoles([]);
       window.location.hash = '';
     },
   };

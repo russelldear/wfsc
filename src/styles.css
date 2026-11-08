@@ -683,3 +683,16 @@ details summary {
 .skill-key {
   margin-top: 1rem;
 }
+
+/* Access */
+
+.success {
+  color: var(--ok-text);
+  background: var(--ok-bg);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+}
+
+.role-row {
+  display: contents;
+}

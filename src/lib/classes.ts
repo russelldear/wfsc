@@ -22,6 +22,12 @@ export function ageRangeLabel(min: number | null, max: number | null): string {
   return '';
 }
 
+/** Whether an age falls outside a class's age guidance. Unknown age: no. */
+export function ageOutside(age: number | null, min: number | null, max: number | null): boolean {
+  if (age == null) return false;
+  return (min != null && age < min) || (max != null && age > max);
+}
+
 /**
  * Whether a skater falls outside a class's age guidance, judged at the start
  * of the term. Unknown when there is no date of birth.

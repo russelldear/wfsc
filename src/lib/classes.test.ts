@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ageRangeLabel, formatTime, outsideAgeRange, timeRange } from './classes';
+import { ageOutside, ageRangeLabel, formatTime, outsideAgeRange, timeRange } from './classes';
 
 describe('formatTime', () => {
   it('shows 12-hour times', () => {
@@ -27,5 +27,14 @@ describe('ages', () => {
     expect(outsideAgeRange('2011-01-01', '2026-10-12', 16, null)).toBe(true); // 15
     expect(outsideAgeRange(null, '2026-10-12', 4, 6)).toBe(false);
     expect(outsideAgeRange('2000-01-01', '2026-10-12', null, null)).toBe(false);
+  });
+});
+
+describe('ageOutside', () => {
+  it('compares a known age with the guidance', () => {
+    expect(ageOutside(7, 4, 6)).toBe(true);
+    expect(ageOutside(6, 4, 6)).toBe(false);
+    expect(ageOutside(15, 16, null)).toBe(true);
+    expect(ageOutside(null, 4, 6)).toBe(false);
   });
 });
