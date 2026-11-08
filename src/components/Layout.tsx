@@ -30,7 +30,7 @@ export function Layout() {
       <header className="site-header">
         <div className="site-header-inner">
           <span className="brand">
-            <img src="favicon.svg" alt="" width={24} height={24} /> WFSC
+            <img src="logo-64.png" alt="" width={32} height={32} className="brand-logo" /> WFSC
           </span>
           <nav aria-label="Main" className="main-nav">
             {committee && (
