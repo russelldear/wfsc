@@ -108,13 +108,16 @@ h2 {
 }
 
 .brand {
-  font-weight: 700;
-}
-
-.brand {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.brand:hover {
+  color: var(--accent);
 }
 
 .brand-logo {

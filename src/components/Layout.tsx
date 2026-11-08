@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet, useLocation } from 'react-router';
+import { Link, Outlet, useLocation } from 'react-router';
 import { useAuth } from '../auth/AuthProvider';
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from '../lib/theme';
 import { Menu, MenuLink } from './Menu';
@@ -29,9 +29,11 @@ export function Layout() {
       {envLabel && <div className="env-banner">{envLabel}: test data only</div>}
       <header className="site-header">
         <div className="site-header-inner">
-          <span className="brand">
-            <img src="logo-64.png" alt="" width={32} height={32} className="brand-logo" /> WFSC
-          </span>
+          {/* Home: the member list for the committee; others are sent on to their first page. */}
+          <Link to="/" className="brand">
+            <img src="logo-64.png" alt="" width={32} height={32} className="brand-logo" />
+            Wellington Figure Skating Club
+          </Link>
           <nav aria-label="Main" className="main-nav">
             {committee && (
               <Menu label="Members" active={inMembers}>
