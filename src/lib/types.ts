@@ -28,7 +28,7 @@ export interface Lookups {
 }
 
 export interface PersonFields {
-  membership_number: number | null;
+  membership_number: string | null;
   first_name: string;
   last_name: string;
   date_of_birth: string | null;
@@ -65,7 +65,7 @@ export interface PersonRef {
   id: string;
   first_name: string;
   last_name: string;
-  membership_number: number | null;
+  membership_number: string | null;
 }
 
 export interface MembershipMemberRow {
@@ -99,7 +99,7 @@ export interface PersonDetail extends Person {
 
 export interface MemberSummary {
   id: string;
-  membership_number: number | null;
+  membership_number: string | null;
   first_name: string;
   last_name: string;
   email: string | null;

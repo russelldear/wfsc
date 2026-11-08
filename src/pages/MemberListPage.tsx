@@ -35,7 +35,7 @@ function matchesSearch(m: MemberSummary, term: string): boolean {
   return (
     `${m.first_name} ${m.last_name}`.toLowerCase().includes(t) ||
     (m.email ?? '').toLowerCase().includes(t) ||
-    String(m.membership_number ?? '') === t
+    (m.membership_number ?? '').includes(t)
   );
 }
 

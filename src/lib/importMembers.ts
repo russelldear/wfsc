@@ -1,4 +1,5 @@
 import { currentSeasonStart } from './dates';
+import { isMembershipNumber } from './membershipNumber';
 import type { Contact, Lookups, MembershipKind, PersonFields } from './types';
 
 /**
@@ -171,7 +172,7 @@ function splitList(value: string): string[] {
 export function interpretSheet(
   table: string[][],
   lookups: Lookups,
-  existingNumbers: ReadonlySet<number>,
+  existingNumbers: ReadonlySet<string>,
   today: string,
 ): Interpretation {
   const [header, ...body] = table;
@@ -206,7 +207,7 @@ export function interpretSheet(
   const ethnicityByLabel = new Map(lookups.ethnicities.map((e) => [fold(e.label), e.code]));
   const typeByName = new Map(lookups.memberTypes.map((t) => [fold(t.name), t.id]));
   const missingTypes = new Map<string, string>();
-  const numbersInFile = new Map<number, number>();
+  const numbersInFile = new Map<string, number>();
 
   body.forEach((cells, i) => {
     const line = i + 2; // spreadsheet row number, counting the header as row 1
@@ -233,11 +234,11 @@ export function interpretSheet(
     };
 
     // Membership number
-    let membershipNumber: number | null = null;
+    let membershipNumber: string | null = null;
     const rawNumber = get('number');
     if (rawNumber) {
-      if (/^\d+$/.test(rawNumber) && Number(rawNumber) > 0) {
-        membershipNumber = Number(rawNumber);
+      if (isMembershipNumber(rawNumber)) {
+        membershipNumber = rawNumber;
         if (existingNumbers.has(membershipNumber)) {
           errors.push(`Membership #${membershipNumber} is already in the database.`);
         }
@@ -245,7 +246,7 @@ export function interpretSheet(
         if (earlier) errors.push(`Membership #${membershipNumber} is also used on row ${earlier}.`);
         else numbersInFile.set(membershipNumber, line);
       } else {
-        errors.push(`Membership # "${rawNumber}" is not a whole number.`);
+        errors.push(`Membership # "${rawNumber}" is not in the form 22/006.`);
       }
     } else {
       warnings.push('No membership number: a new one will be assigned.');

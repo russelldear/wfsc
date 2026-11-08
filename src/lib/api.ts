@@ -200,9 +200,9 @@ export async function importMembers(rows: ImportPayload[]): Promise<number> {
   return check(await supabase.rpc('import_members', { p_rows: rows })) as number;
 }
 
-export async function existingMembershipNumbers(): Promise<Set<number>> {
+export async function existingMembershipNumbers(): Promise<Set<string>> {
   const rows = check(
     await supabase.from('person').select('membership_number').not('membership_number', 'is', null),
-  ) as { membership_number: number }[];
+  ) as { membership_number: string }[];
   return new Set(rows.map((r) => r.membership_number));
 }

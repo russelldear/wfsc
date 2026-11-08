@@ -58,7 +58,7 @@ describe('interpretSheet', () => {
   it('maps a full row to a person and membership', () => {
     const result = interpretSheet(
       sheet({
-        'Membership #': '42',
+        'Membership #': '22/042',
         'First Name': 'Aroha',
         'Last Name': 'Example',
         Age: '12',
@@ -88,7 +88,7 @@ describe('interpretSheet', () => {
     expect(row!.payload).toMatchObject({
       line: 2,
       person: {
-        membership_number: 42,
+        membership_number: '22/042',
         gender_code: 'female',
         in_skate_school: true,
         coc_agreed_on: '2022-10-01',
@@ -115,16 +115,34 @@ describe('interpretSheet', () => {
   it('flags numbers already in the database or repeated in the file', () => {
     const result = interpretSheet(
       sheet(
-        { 'Membership #': '5', 'First Name': 'A', 'Last Name': 'One' },
-        { 'Membership #': '6', 'First Name': 'B', 'Last Name': 'Two' },
-        { 'Membership #': '6', 'First Name': 'C', 'Last Name': 'Three' },
+        { 'Membership #': '22/005', 'First Name': 'A', 'Last Name': 'One' },
+        { 'Membership #': '22/006', 'First Name': 'B', 'Last Name': 'Two' },
+        { 'Membership #': '22/006', 'First Name': 'C', 'Last Name': 'Three' },
       ),
       lookups,
-      new Set([5]),
+      new Set(['22/005']),
       TODAY,
     );
     expect(result.rows.map((r) => r.errors.length)).toEqual([1, 0, 1]);
     expect(result.rows[2]!.errors[0]).toContain('row 3');
+  });
+
+  it('rejects membership numbers not in the club format', () => {
+    const result = interpretSheet(
+      sheet(
+        { 'Membership #': '22-006', 'First Name': 'A', 'Last Name': 'B' },
+        { 'Membership #': '22/6', 'First Name': 'C', 'Last Name': 'D' },
+        { 'Membership #': '6', 'First Name': 'E', 'Last Name': 'F' },
+      ),
+      lookups,
+      new Set(),
+      TODAY,
+    );
+    expect(result.rows.map((r) => r.errors[0])).toEqual([
+      'Membership # "22-006" is not in the form 22/006.',
+      'Membership # "22/6" is not in the form 22/006.',
+      'Membership # "6" is not in the form 22/006.',
+    ]);
   });
 
   it('lists member types that need creating', () => {

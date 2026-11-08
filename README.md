@@ -160,7 +160,10 @@ How the Sheet's columns are read:
 - Rows whose membership number is already in the database are skipped, so
   re-importing the same file doesn't create duplicates.
 
-New membership numbers continue after the highest one imported.
+Membership numbers use the club format: two-digit year of joining, a slash,
+and a counter that runs on across years (e.g. `22/006`). When someone without
+a number first joins a membership, they get the current year and the next
+counter after the highest in use, e.g. `26/107`.
 
 ## Backups
 

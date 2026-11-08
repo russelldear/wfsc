@@ -15,7 +15,7 @@ const lookups: Lookups = {
 function person(overrides: Partial<PersonDetail> = {}): PersonDetail {
   return {
     id: 'p1',
-    membership_number: 12,
+    membership_number: '22/012',
     first_name: 'Aroha',
     last_name: 'Example',
     date_of_birth: '2014-05-01',
@@ -74,7 +74,7 @@ describe('memberExportRows', () => {
     const [row] = memberExportRows([person()], lookups, '2026-11-07');
     const byHeader = Object.fromEntries(SHEET_HEADERS.map((h, i) => [h, row![i]]));
     expect(byHeader).toMatchObject({
-      'Membership #': '12',
+      'Membership #': '22/012',
       Age: '12',
       Gender: 'Female',
       Skater: 'Y',
@@ -96,16 +96,19 @@ describe('memberExportRows', () => {
     expect(rows).toHaveLength(0);
   });
 
-  it('sorts by membership number, unnumbered last', () => {
+  it('sorts by the membership number counter, unnumbered last', () => {
     const rows = memberExportRows(
       [
         person({ id: 'a', membership_number: null, last_name: 'Aaa' }),
-        person({ id: 'b', membership_number: 7 }),
+        person({ id: 'b', membership_number: '23/106' }),
+        person({ id: 'c', membership_number: '22/105' }),
+        person({ id: 'd', membership_number: '20/1000' }),
       ],
       lookups,
       '2026-11-07',
     );
-    expect(rows.map((r) => r[0])).toEqual(['7', '']);
+    // By the running counter, whatever the year prefix.
+    expect(rows.map((r) => r[0])).toEqual(['22/105', '23/106', '20/1000', '']);
   });
 });
 

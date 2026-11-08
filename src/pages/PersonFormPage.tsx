@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { useAsync } from '../components/useAsync';
 import { createMembership, fetchLookups, friendlyError, getPerson, savePerson } from '../lib/api';
 import { currentSeasonStart, nextSeasonStart, nzToday, seasonLabel } from '../lib/dates';
+import { MEMBERSHIP_NUMBER_PATTERN } from '../lib/membershipNumber';
 import type { Contact, Lookups, MembershipKind, PersonDetail, PersonFields } from '../lib/types';
 
 const EMPTY: PersonFields = {
@@ -82,8 +83,7 @@ function PersonForm({ lookups, existing }: { lookups: Lookups; existing: PersonD
           value={(fields[key] as string | number | null) ?? ''}
           onChange={(e) => {
             const v = e.target.value;
-            if (key === 'membership_number') set(key, v ? Number(v) : null);
-            else set(key, (v === '' && !required ? null : v) as never);
+            set(key, (v === '' && !required ? null : v) as never);
           }}
         />
       </label>
@@ -142,11 +142,11 @@ function PersonForm({ lookups, existing }: { lookups: Lookups; existing: PersonD
           <label>
             Membership number
             <input
-              type="number"
-              min={1}
               value={fields.membership_number ?? ''}
-              placeholder="Assigned automatically"
-              onChange={(e) => set('membership_number', e.target.value ? Number(e.target.value) : null)}
+              pattern={MEMBERSHIP_NUMBER_PATTERN}
+              title="Two-digit year, a slash, and at least three digits, e.g. 22/006"
+              placeholder="Assigned when they join, e.g. 26/107"
+              onChange={(e) => set('membership_number', e.target.value.trim() || null)}
             />
           </label>
           <label>

@@ -1,4 +1,5 @@
 import { ageOn } from './dates';
+import { compareMembershipNumbers } from './membershipNumber';
 import type { Contact, Lookups, PersonDetail, PersonMembershipLink } from './types';
 
 /** Same columns, in the same order, as the club's existing Google Sheet. */
@@ -61,8 +62,7 @@ export function memberExportRows(
     .filter((x): x is { p: PersonDetail; latest: PersonMembershipLink } => !!x.latest)
     .sort(
       (a, b) =>
-        (a.p.membership_number ?? Number.MAX_SAFE_INTEGER) -
-          (b.p.membership_number ?? Number.MAX_SAFE_INTEGER) ||
+        compareMembershipNumbers(a.p.membership_number, b.p.membership_number) ||
         a.p.last_name.localeCompare(b.p.last_name) ||
         a.p.first_name.localeCompare(b.p.first_name),
     );
@@ -77,7 +77,7 @@ export function memberExportRows(
     const clubs = p.person_other_club.map((c) => c.club_name).sort();
     const kind = latest.membership.kind;
     return [
-      p.membership_number?.toString() ?? '',
+      p.membership_number ?? '',
       p.first_name,
       p.last_name,
       p.date_of_birth ? String(ageOn(p.date_of_birth, today)) : '',

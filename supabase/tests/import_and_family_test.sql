@@ -4,7 +4,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 
-select plan(16);
+select plan(17);
 
 insert into auth.users (id, email) values
   ('11111111-1111-1111-1111-111111111111', 'committee@example.test'),
@@ -29,8 +29,8 @@ select throws_ok(
   $$ select public.import_members('[{"line":2,"person":{"first_name":"A","last_name":"B"}}]') $$,
   '42501', null, 'user without a role cannot import');
 select throws_ok(
-  $$ select public.sync_membership_number_seq(100) $$,
-  '42501', null, 'user without a role cannot move the number sequence');
+  $$ select public.next_membership_number() $$,
+  '42501', null, 'membership numbers are only assigned by the database');
 
 reset role;
 select pg_temp.act_as('11111111-1111-1111-1111-111111111111');
@@ -44,7 +44,7 @@ select is(
       'membership', jsonb_build_object('kind', 'family', 'season_start', '2040-10-01')),
     jsonb_build_object(
       'line', 3,
-      'person', jsonb_build_object('membership_number', 9050, 'first_name', 'Imported',
+      'person', jsonb_build_object('membership_number', '40/050', 'first_name', 'Imported',
                                    'last_name', 'Numbered', 'date_of_birth', '2012-01-02'),
       'contacts', '[{"name":"Guardian Raw Text 021 000","is_guardian":true}]'::jsonb,
       'ethnicities', '["maori"]'::jsonb,
@@ -58,22 +58,23 @@ select is(
 
 select is(
   (select membership_number from public.person where last_name = 'Numberless'),
-  9051, 'people without a number get one after the highest number in the file');
+  to_char(now() at time zone 'Pacific/Auckland', 'YY') || '/051',
+  'people without a number get this year and the next counter after the file''s numbers');
 
 select results_eq(
   $$ select (select count(*) from public.contact c join public.person p on p.id = c.person_id
-             where p.membership_number = 9050),
+             where p.membership_number = '40/050'),
             (select count(*) from public.person_other_club c join public.person p on p.id = c.person_id
-             where p.membership_number = 9050),
+             where p.membership_number = '40/050'),
             (select card_issued_on from public.membership_member mm join public.person p on p.id = mm.person_id
-             where p.membership_number = 9050) $$,
+             where p.membership_number = '40/050') $$,
   $$ values (1::bigint, 2::bigint, '2040-10-10'::date) $$,
   'contacts, other clubs and card date are imported');
 
 select throws_like(
   $$ select public.import_members(jsonb_build_array(
        jsonb_build_object('line', 7, 'person', jsonb_build_object('first_name', 'Fine', 'last_name', 'Row')),
-       jsonb_build_object('line', 8, 'person', jsonb_build_object('membership_number', 9050,
+       jsonb_build_object('line', 8, 'person', jsonb_build_object('membership_number', '40/050',
                                                                   'first_name', 'Dup', 'last_name', 'Number')))) $$,
   'Row 8:%', 'a failing row is named in the error');
 
@@ -88,14 +89,14 @@ select is(
 select lives_ok(
   $$ select public.join_family_membership(
        (select mm.membership_id from public.membership_member mm
-        join public.person p on p.id = mm.person_id where p.membership_number = 9050),
-       (select id from public.person where membership_number = 9051)) $$,
+        join public.person p on p.id = mm.person_id where p.membership_number = '40/050'),
+       (select id from public.person where last_name = 'Numberless')) $$,
   'a person can be moved onto another family membership in the same season');
 
 select is(
   (select count(distinct mm.membership_id) from public.membership_member mm
    join public.person p on p.id = mm.person_id
-   where p.membership_number in (9050, 9051)),
+   where p.last_name in ('Numbered', 'Numberless')),
   1::bigint, 'both family members now share one membership');
 
 select is(
@@ -105,8 +106,8 @@ select is(
 select throws_ok(
   $$ select public.join_family_membership(
        (select mm.membership_id from public.membership_member mm
-        join public.person p on p.id = mm.person_id where p.membership_number = 9050),
-       (select id from public.person where membership_number = 9051)) $$,
+        join public.person p on p.id = mm.person_id where p.membership_number = '40/050'),
+       (select id from public.person where last_name = 'Numberless')) $$,
   'P0001', 'That person is already on this membership',
   'joining the same membership twice is refused');
 
@@ -120,7 +121,7 @@ select throws_ok(
   $$ select public.join_family_membership(
        (select mm.membership_id from public.membership_member mm
         join public.person p on p.id = mm.person_id where p.first_name = 'Third'),
-       (select id from public.person where membership_number = 9051)) $$,
+       (select id from public.person where last_name = 'Numberless')) $$,
   'P0001', null, 'a person sharing another family membership is not moved silently');
 
 select public.create_membership('individual', '2041-10-01', null,
@@ -130,26 +131,39 @@ select public.create_membership('individual', '2041-10-01', null,
 select throws_ok(
   $$ select public.join_family_membership(
        (select id from public.membership where season_start = '2041-10-01'),
-       (select id from public.person where membership_number = 9051)) $$,
+       (select id from public.person where last_name = 'Numberless')) $$,
   'P0001', 'Only a family membership can cover more than one person',
   'only family memberships can take extra people');
 
 -- ---------------------------------------------------------------------------
--- Sequence
+-- Number format
 -- ---------------------------------------------------------------------------
 
-select lives_ok($$ select public.sync_membership_number_seq() $$,
-  'committee can sync the number sequence');
+select throws_ok(
+  $$ select public.save_person('{"membership_number":"22-006","first_name":"Bad","last_name":"Format"}'::jsonb) $$,
+  '23514', null, 'numbers must look like 22/006');
+
+select throws_ok(
+  $$ select public.save_person('{"membership_number":"22/6","first_name":"Bad","last_name":"Format"}'::jsonb) $$,
+  '23514', null, 'the counter needs at least three digits');
+
+-- The counter runs on across years, past 999.
+select public.save_person('{"membership_number":"20/999","first_name":"High","last_name":"Number"}'::jsonb);
+select public.save_person('{"first_name":"After","last_name":"High"}'::jsonb);
+select public.create_membership('individual', '2042-10-01', null,
+  jsonb_build_array(jsonb_build_object('person_id',
+    (select id from public.person where first_name = 'After' and last_name = 'High'))));
+
+select is(
+  (select membership_number from public.person where first_name = 'After' and last_name = 'High'),
+  to_char(now() at time zone 'Pacific/Auckland', 'YY') || '/1000',
+  'new numbers continue the running counter, past 999');
 
 reset role;
 
 select is(
-  (select last_value from public.membership_number_seq) >= 9051,
-  true, 'the sequence is past every number in use');
-
-select is(
-  nextval('public.membership_number_seq') > (select max(membership_number) from public.person),
-  true, 'the next number assigned is new');
+  (select count(*) from public.person where membership_number !~ '^[0-9]{2}/[0-9]{3,}$'),
+  0::bigint, 'every stored number is in the club format');
 
 select * from finish();
 rollback;
