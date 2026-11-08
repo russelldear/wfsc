@@ -226,11 +226,12 @@ session date at the top of the grid.
 | Coach | View only: skate school classes, skater names and ages, badges and progress. |
 | Admin | Manage access on the **Access** page. Add Committee too to see members. |
 
-- **Inviting:** an admin enters a Google email and a role. If that person has
-  already signed in, they get the role at once; otherwise it applies the first
-  time they sign in. Invitations only apply once the account's email is
-  confirmed (Google sign-ins arrive confirmed), so nobody can claim one by
-  signing up with someone else's address.
+- **Granting access:** an admin enters a Google email and a role. If that
+  person has already signed in, they get the role at once; otherwise it is
+  held (in `role_invite`) and applies the first time they sign in. Nothing is
+  emailed: tell the person to sign in. Held access only applies once the
+  account's email is confirmed (Google sign-ins arrive confirmed), so nobody
+  can claim it by signing up with someone else's address.
 - There must always be at least one admin. Role changes go through database
   functions that check the caller is an admin, and are audited.
 - **Coaches never read the `person` table.** Row level security works on

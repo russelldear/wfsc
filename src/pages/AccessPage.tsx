@@ -76,7 +76,10 @@ export function AccessPage() {
       {message && <p className="success">{message}</p>}
 
       <section className="panel">
-        <h2>Invite someone</h2>
+        <h2>Grant access</h2>
+        <p className="hint">
+          Nothing is emailed. Let the person know to go to this site and sign in with that Google account.
+        </p>
         <form
           className="inline-form"
           onSubmit={(e) => {
@@ -87,7 +90,7 @@ export function AccessPage() {
               setMessage(
                 result === 'granted'
                   ? `${address} has already signed in, so they are now ${roleLabel(role)}.`
-                  : `Invitation saved. ${address} becomes ${roleLabel(role)} the first time they sign in with that Google account.`,
+                  : `Access granted. ${address} becomes ${roleLabel(role)} the first time they sign in with that Google account.`,
               );
               setEmail('');
             });
@@ -108,7 +111,7 @@ export function AccessPage() {
             </select>
           </label>
           <button type="submit" className="primary" disabled={busy}>
-            Invite
+            Grant
           </button>
         </form>
 
@@ -119,7 +122,7 @@ export function AccessPage() {
               {invites.data.map((i) => (
                 <li key={`${i.email}:${i.role}`}>
                   {i.email} <span className="badge">{roleLabel(i.role)}</span>
-                  <span className="muted">invited {formatDate(i.invited_at.slice(0, 10))}</span>
+                  <span className="muted">granted {formatDate(i.invited_at.slice(0, 10))}</span>
                   <span className="roster-actions">
                     <button
                       type="button"
@@ -127,7 +130,7 @@ export function AccessPage() {
                       disabled={busy}
                       onClick={() => void run(() => cancelInvite(i.email, i.role))}
                     >
-                      Cancel
+                      Withdraw
                     </button>
                   </span>
                 </li>
